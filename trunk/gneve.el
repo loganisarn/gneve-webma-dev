@@ -102,7 +102,9 @@
   "^\\([0-9]+\\):"
   "Regexp for video slot number")
 
-(defvar gneve-buffer "*GNEVE*" "gneve-buffer")
+(defconst gneve-default-buffer "*GNEVE*" "Default gneve buffer")
+
+(defvar gneve-buffer gneve-default-buffer "gneve-buffer")
 (defvar vslots nil "video slot file names list")
 (defvar vslot-n nil "video slot number")
 (defvar vslot nil "active video slot")
@@ -175,22 +177,23 @@ There are three cases:
 3. If there is no EDL buffer opened, then create a base structure
 "
   (interactive)
-  ;; If there is no EDL buffer opened, open a temporary one
-  (if (not (string-match "\\.edl" (buffer-name)))
-      (pop-to-buffer gneve-buffer nil))
-  (if (not (eq major-mode 'gneve-mode))
-      (gneve-mode))
-  (setq gneve-buffer (buffer-name))
-  ;; If current buffer is a previously saved EDL buffer
-  (goto-char (point-min))
-  ;; If buffer contains valid vslots definition
-  (if (looking-at-p "(setq vslots")
-      ;; then evaluate it
-      (and
-       (eval-region 0 (search-forward "))" nil t))
-       (forward-char 2))
-    ;; else create base structure
-    (insert "(setq vslots '( ))\n\n")))
+  (save-excursion
+    ;; If there is no EDL buffer opened, open a temporary one
+    (if (not (string-match "\\.edl" (buffer-name)))
+        (pop-to-buffer gneve-default-buffer nil))
+    (if (not (eq major-mode 'gneve-mode))
+        (gneve-mode))
+    (setq gneve-buffer (buffer-name))
+    ;; If current buffer is a previously saved EDL buffer
+    (goto-char (point-min))
+    ;; If buffer contains valid vslots definition
+    (if (looking-at-p "(setq vslots")
+        ;; then evaluate it
+        (and
+         (eval-region 0 (search-forward "))" nil t))
+         (forward-char 2))
+      ;; else create base structure
+      (insert "(setq vslots '( ))\n\n"))))
 
 (defun vslot-pos (arg list)
   "video slot postion"
