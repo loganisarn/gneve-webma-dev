@@ -18,7 +18,9 @@ wget http://1010.co.uk/gneve.el
 
 == webma devel version ==
 
-
+{{{
+svn checkout http://gneve-webma-dev.googlecode.com/svn/trunk/ gneve-webma-dev
+}}}
 
 Put something similar to the following in your ~/.emacs to use this file:
 
