@@ -13,12 +13,11 @@
 || C || Goto timecode of current point ||
 || G || Goto timecode of user input ||
 
-= Layout summary: =
-
+ == Layout summary: ==
 {{{
  Q W 
- A S     G H J K L
-         V   
+  A S     G   J K L
+       C V   
 }}}
 
 = Editing commands: =
@@ -29,11 +28,11 @@
 || Z || Goto start of marked section and pause ||
 || X || Goto end of marked section and pause ||
 
-= Layout summary: =
+ == Layout summary: ==
 {{{
      E R 
- 
-   Z X C
+             H
+   Z X
 }}}
 
 = Render commands: =
@@ -42,7 +41,7 @@
 || O || Save rendered video ||
 || P || Play rendered video ||
 
-= Layout summary: =
+ == Layout summary: ==
 {{{
              U I O P
 }}}
