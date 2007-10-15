@@ -38,8 +38,8 @@
 
 ;; Put something similar to the following in your ~/.emacs to use this file:
 ;;
-;; (load "~/path/to/gneve.el")
-;;
+;; (add-to-list 'load-path "~/path/to/gneve-mode/")
+;; (require 'gneve-mode)
 
 ;;; Dependency:
 
@@ -127,7 +127,7 @@
   (define-key gneve-mode-map "P" 'play-rendered)
   (define-key gneve-mode-map "D" 'take-screenshot)
 
-
+;;;###autoload
 (defun gneve-mode()
   "EDL and mplayer based GNU Emacs video editing mode
 
@@ -448,8 +448,7 @@ Render commands:
 (defalias 'rest 'cdr)
 (defalias 'endp 'null)
 
+(add-to-list 'auto-mode-alist '("\\.edl\\'" . gneve-mode))
 
-;;;###autoload(add-to-list 'auto-mode-alist '("\\.edl\\'" . gneve-mode))
 (provide 'gneve-mode)
 
-;;  
