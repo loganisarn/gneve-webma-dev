@@ -65,10 +65,34 @@
 
 ;;; Code:
 
+;; Keyboard shortcuts definition
 (defvar gneve-mode-map nil
+  (let ((gneve-mode-map (make-sparse-keymap)))
+    ;; Video operation
+    (define-key gneve-mode-map "V" 'open-film)
+    (define-key gneve-mode-map "L" 'pause)
+    (define-key gneve-mode-map "J" 'prev-frame)
+    (define-key gneve-mode-map "K" 'next-frame)
+    (define-key gneve-mode-map "Q" 'one-sec-back)
+    (define-key gneve-mode-map "W" 'one-sec-forward)
+    (define-key gneve-mode-map "A" 'five-sec-back)
+    (define-key gneve-mode-map "S" 'five-sec-forward)
+    ;; Mark operation
+    (define-key gneve-mode-map "E" 'mark-start)
+    (define-key gneve-mode-map "R" 'mark-end)
+    (define-key gneve-mode-map "H" 'write-marks)
+    (define-key gneve-mode-map "Z" 'goto-start)
+    (define-key gneve-mode-map "X" 'goto-end)
+    (define-key gneve-mode-map "C" 'goto-point)
+    (define-key gneve-mode-map "G" 'goto-timecode)
+    ;; Render operation
+    (define-key gneve-mode-map "U" 'region-render)
+    (define-key gneve-mode-map "I" 'buffer-render)
+    (define-key gneve-mode-map "O" 'save-rendered)
+    (define-key gneve-mode-map "P" 'play-rendered)
+    (define-key gneve-mode-map "D" 'take-screenshot)
+  gneve-mode-map)
   "local keymap for gneve")
-
-(setq gneve-mode-map nil)
 
 (defconst number-regexp
   "-?\\([0-9]+\\.?\\|\\.\\)[0-9]*\\(e[0-9]+\\)?"
@@ -93,39 +117,6 @@
 (defvar tc-min nil "timecode minute part")
 (defvar tc-sec nil "timecode second part")
 (defvar tc-msec nil "timecode mili second part")
-
-
-;; Keyboard shortcuts definition
-
-(if gneve-mode-map
-  nil
-  (setq gneve-mode-map (make-sparse-keymap))
-
-;; Video operation
-  (define-key gneve-mode-map "V" 'open-film)
-  (define-key gneve-mode-map "L" 'pause)
-  (define-key gneve-mode-map "J" 'prev-frame)
-  (define-key gneve-mode-map "K" 'next-frame)
-  (define-key gneve-mode-map "Q" 'one-sec-back)
-  (define-key gneve-mode-map "W" 'one-sec-forward)
-  (define-key gneve-mode-map "A" 'five-sec-back)
-  (define-key gneve-mode-map "S" 'five-sec-forward)
-
-;; Mark operation
-  (define-key gneve-mode-map "E" 'mark-start)
-  (define-key gneve-mode-map "R" 'mark-end)
-  (define-key gneve-mode-map "H" 'write-marks)
-  (define-key gneve-mode-map "Z" 'goto-start)
-  (define-key gneve-mode-map "X" 'goto-end)
-  (define-key gneve-mode-map "C" 'goto-point)
-  (define-key gneve-mode-map "G" 'goto-timecode)
-
-;; Render operation
-  (define-key gneve-mode-map "U" 'region-render))
-  (define-key gneve-mode-map "I" 'buffer-render)
-  (define-key gneve-mode-map "O" 'save-rendered)
-  (define-key gneve-mode-map "P" 'play-rendered)
-  (define-key gneve-mode-map "D" 'take-screenshot)
 
 ;;;###autoload
 (defun gneve-mode()
