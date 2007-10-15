@@ -29,7 +29,7 @@
 ;;; Commentary:
 
 ;; Use: 
-;;     1. M-x gneve-mode RET to invoke in gneve-mode
+;;     1. M-x gneve-start RET to invoke in gneve-mode
 ;;        C-x C-w to save *GNEVE* buffer as videname.edl for later usage
 ;;     2. C-x C-f any .edl file to open it in gneve-mode
 ;;     3. C-h m to visit gneve mode help
@@ -66,7 +66,7 @@
 ;;; Code:
 
 ;; Keyboard shortcuts definition
-(defvar gneve-mode-map nil
+(defvar gneve-mode-map
   (let ((gneve-mode-map (make-sparse-keymap)))
     ;; Video operation
     (define-key gneve-mode-map "V" 'open-film)
@@ -162,21 +162,35 @@ Render commands:
               U I O P"
   (interactive)
   (kill-all-local-variables)
-  (defvar vslot-p nil "vslot predicate")
-  (setq vslot-p nil)
-  (if (string-match "\\.edl" (buffer-name))
-      (setq gneve-buffer (buffer-name))
-    (if (not (member (get-buffer gneve-buffer) (buffer-list)))
-        (setq vslot-p t)))
-  (pop-to-buffer gneve-buffer nil)
-  (if vslot-p
-      (insert "(setq vslots '( ))\n\n"))
-  (goto-char (point-min))
-  (eval-region 0 (search-forward "))"))
-  (forward-char 2)
   (setq major-mode 'gneve-mode)
   (setq mode-name "gneve")
   (use-local-map gneve-mode-map))
+
+(defun gneve-start ()
+  "Create or reload a GNEVE session.
+There are three cases:
+1. If current buffer is a previously saved EDL buffer, then evaulate it
+2. If current buffer is a newly created EDL buffer, then create base a
+  structure
+3. If there is no EDL buffer opened, then create a base structure
+"
+  (interactive)
+  ;; If there is no EDL buffer opened, open a temporary one
+  (if (not (string-match "\\.edl" (buffer-name)))
+      (pop-to-buffer gneve-buffer nil))
+  (if (not (eq major-mode 'gneve-mode))
+      (gneve-mode))
+  (setq gneve-buffer (buffer-name))
+  ;; If current buffer is a previously saved EDL buffer
+  (goto-char (point-min))
+  ;; If buffer contains valid vslots definition
+  (if (looking-at-p "(setq vslots")
+      ;; then evaluate it
+      (and
+       (eval-region 0 (search-forward "))" nil t))
+       (forward-char 2))
+    ;; else create base structure
+    (insert "(setq vslots '( ))\n\n")))
 
 (defun vslot-pos (arg list)
   "video slot postion"
