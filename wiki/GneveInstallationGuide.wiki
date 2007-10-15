@@ -8,13 +8,26 @@ GNU Emacs Video Editor mode (GNEVE) is an elisp application based on a patched m
 A patched version of mplayer and avidemux 2.4 has to be properly installed before using gnevel.el.
 
 
-= Details =
+= Installing gneve.el =
+
+== stable gneve.el version ==
+
+{{{
+wget http://1010.co.uk/gneve.el
+}}}
+
+== webma devel version ==
+
+
 
 Put something similar to the following in your ~/.emacs to use this file:
+
 {{{
 (add-to-list 'load-path "~/path/to/gneve-mode/")
 (require 'gneve-mode)
 }}}
+
+
 
 = Dependency =
 
