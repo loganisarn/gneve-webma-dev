@@ -74,13 +74,13 @@ make install
 
 Avidemux may require some libriaries that has to be available. Please read instructions at http://www.avidemux.org/admWiki/index.php?title=Compiling_Avidemux
 
-== checkout avidemux ==
+ == checkout avidemux ==
 
 {{{
   svn checkout svn://svn.berlios.de/avidemux/branches/avidemux_2.4_branch/
 }}}
 
-== install avidemux into /usr/local/bin ==
+ == install avidemux into /usr/local/bin ==
 
 {{{
 make -f Makefile.dist
