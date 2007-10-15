@@ -1,5 +1,5 @@
 #summary EDL and mplayer based GNU Emacs video editing mode commands
-#labels GNEVEcommands,GNUEmacsVideoEditormode
+#labels GNEVEcommands,GNUEmacsVideoEditormode,Featured
 
 = Video commands: =
 || V || Visit video file and start playing ||
@@ -15,9 +15,11 @@
 
 = Layout summary: =
 
-  * Q W 
-  *  A S     G H J K L
-  *         V   
+{{{
+ Q W 
+ A S     G H J K L
+         V   
+}}}
 
 = Editing commands: =
 
@@ -28,9 +30,11 @@
 || X || Goto end of marked section and pause ||
 
 = Layout summary: =
-  *     E R 
-  * 
-  *   Z X C
+{{{
+     E R 
+ 
+   Z X C
+}}}
 
 = Render commands: =
 || U || Render active region ||
@@ -39,4 +43,6 @@
 || P || Play rendered video ||
 
 = Layout summary: =
-  *             U I O P
+{{{
+             U I O P
+}}}
