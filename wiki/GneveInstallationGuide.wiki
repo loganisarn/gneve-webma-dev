@@ -23,7 +23,7 @@ gnevel.el recommends mplayer 1.0 and avidemux 2.4 using lastest svn version
 
 = Patching and installing mplayer =
 
-First you have to patch mplayer in order to enable timecode precision up to 6 decimal digits.
+First you have to patch mplayer in order to enable timecode precision up to 6 decimal digits. http://www.mplayerhq.hu/DOCS/HTML-single/en/MPlayer.html
 
  == checkout mplayer ==
 
@@ -57,7 +57,7 @@ make install
 
 = Installing avidemux =
 
-Avidemux may require some libriaries that has to be available.
+Avidemux may require some libriaries that has to be available. Please read instructions at http://www.avidemux.org/admWiki/index.php?title=Compiling_Avidemux
 
 == checkout avidemux ==
 
