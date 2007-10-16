@@ -66,9 +66,10 @@
 
 ;;; Bugs/todo:
 
+;; - Clean up function gneve-marker 
 ;; - In function gneve-tc-human use locale variables to avoid the need of four
-;; global bindings tc-hour, tc-min, tc-sec, tc-msec
-;; - What is the purpose of gneve-time-to-frame?
+;; global bindings: tc-hour, tc-min, tc-sec, tc-msec
+;; - Add prefix to global variables
 
 ;;; History:
 ;; 
@@ -118,7 +119,6 @@
 (defvar vslots nil "Video slot file names list.")
 (defvar vslot-n nil "Video slot number.")
 (defvar vslot nil "Active video slot.")
-;not used (defvar filename nil "Video filename.")
 (defvar lastin nil "Lastin.")
 (defvar lastout nil "Lastout.")
 (defvar start nil "Start of timecode mark.")
@@ -132,7 +132,7 @@
 
 ;;;###autoload
 (defun gneve-mode()
-  "EDL and mplayer based GNU Emacs video editing mode
+  "EDL and mplayer based GNU Emacs video editing mode.
 
 Video commands:
   V - Visit video file and start playing
@@ -289,24 +289,24 @@ Argument FILENAME video filename."
   (message "edit points %s %s\n" lastin lastout))
 
 (defun gneve-marker ()
-  ;; copies latest mark to boo. copy and paste only to variable - new function write to buffer
-  (interactive)
-  (progn
+  "Read timecode values from mplayer buffer boo."
+  ;; copies latest mark to buffer boo. copy and paste only to variable - new
+  ;; function write to buffer
     ;; goto end of buffer search back to equals and copy to last-in
     (set-buffer "boo")
     (process-send-string "my-process" "pausing get_time_pos\n")
     (sleep-for 0.1)
     (goto-char (point-max))
-    (backward-char)
-    (backward-char)
+    (backward-char 2)
     (setq end (point))
     (search-backward "=")
     (forward-char)
     (setq start (point))
     (copy-region-as-kill start end)
-    (car kill-ring))) ;; stend
+    (car kill-ring))
 
 (defun gneve-goto-point ()
+  "Seek timecode."
   (interactive)
   (setq timecode-string (read (current-buffer)))
   (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
@@ -470,10 +470,6 @@ Argument FILENAME video filename."
 Argument MICROSEC microseconds."
   ;; 0.04 is one frame - divide by 0.04
   (/ microsec 0.04))
-
-(defun gneve-time-to-frame (number)
-  ;; min.sec convert to frame
-  (/ number 0.04))
 
 ;;; List functions
 
