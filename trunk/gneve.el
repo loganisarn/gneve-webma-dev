@@ -43,7 +43,7 @@
 
 ;;; Dependency:
 
-;; gnevel.el requires mplayer 1.0 and avidemux 2.4, lastest svn version recommended
+;; gneve.el requires mplayer 1.0 and avidemux 2.4, lastest svn version recommended
 ;; mplayer:  patch time postition precision to 6 digits
 ;; -- checkout: svn checkout svn://svn.mplayerhq.hu/mplayer/trunk mplayer
 ;; -- patch:
@@ -69,36 +69,36 @@
 (defvar gneve-mode-map
   (let ((gneve-mode-map (make-sparse-keymap)))
     ;; Video operation
-    (define-key gneve-mode-map "V" 'open-film)
-    (define-key gneve-mode-map "L" 'pause)
-    (define-key gneve-mode-map "J" 'prev-frame)
-    (define-key gneve-mode-map "K" 'next-frame)
-    (define-key gneve-mode-map "Q" 'one-sec-back)
-    (define-key gneve-mode-map "W" 'one-sec-forward)
-    (define-key gneve-mode-map "A" 'five-sec-back)
-    (define-key gneve-mode-map "S" 'five-sec-forward)
+    (define-key gneve-mode-map "V" 'gneve-open-film)
+    (define-key gneve-mode-map "L" 'gneve-pause)
+    (define-key gneve-mode-map "J" 'gneve-prev-frame)
+    (define-key gneve-mode-map "K" 'gneve-next-frame)
+    (define-key gneve-mode-map "Q" 'gneve-one-sec-back)
+    (define-key gneve-mode-map "W" 'gneve-one-sec-forward)
+    (define-key gneve-mode-map "A" 'gneve-five-sec-back)
+    (define-key gneve-mode-map "S" 'gneve-five-sec-forward)
     ;; Mark operation
-    (define-key gneve-mode-map "E" 'mark-start)
-    (define-key gneve-mode-map "R" 'mark-end)
-    (define-key gneve-mode-map "H" 'write-marks)
-    (define-key gneve-mode-map "Z" 'goto-start)
-    (define-key gneve-mode-map "X" 'goto-end)
-    (define-key gneve-mode-map "C" 'goto-point)
-    (define-key gneve-mode-map "G" 'goto-timecode)
+    (define-key gneve-mode-map "E" 'gneve-mark-start)
+    (define-key gneve-mode-map "R" 'gneve-mark-end)
+    (define-key gneve-mode-map "H" 'gneve-write-marks)
+    (define-key gneve-mode-map "Z" 'gneve-goto-start)
+    (define-key gneve-mode-map "X" 'gneve-goto-end)
+    (define-key gneve-mode-map "C" 'gneve-goto-point)
+    (define-key gneve-mode-map "G" 'gneve-goto-timecode)
     ;; Render operation
-    (define-key gneve-mode-map "U" 'region-render)
-    (define-key gneve-mode-map "I" 'buffer-render)
-    (define-key gneve-mode-map "O" 'save-rendered)
-    (define-key gneve-mode-map "P" 'play-rendered)
-    (define-key gneve-mode-map "D" 'take-screenshot)
+    (define-key gneve-mode-map "U" 'gneve-render-region)
+    (define-key gneve-mode-map "I" 'gneve-render-buffer)
+    (define-key gneve-mode-map "O" 'gneve-save-rendered)
+    (define-key gneve-mode-map "P" 'gneve-play-rendered)
+    (define-key gneve-mode-map "D" 'gneve-take-screenshot)
   gneve-mode-map)
   "local keymap for gneve")
 
-(defconst number-regexp
+(defconst gneve-number-regexp
   "-?\\([0-9]+\\.?\\|\\.\\)[0-9]*\\(e[0-9]+\\)?"
   "Regular expression for recognizing numbers.")
 
-(defconst vslot-regexp 
+(defconst gneve-vslot-regexp 
   "^\\([0-9]+\\):"
   "Regexp for video slot number")
 
@@ -195,14 +195,14 @@ There are three cases:
       ;; else create base structure
       (insert "(setq vslots '( ))\n\n"))))
 
-(defun vslot-pos (arg list)
+(defun gneve-vslot-pos (arg list)
   "video slot postion"
   (cond 
    ((endp list) nil)
    ((equal arg (car list)) (length (cdr list)))
-   (t (vslot-pos arg (cdr list)))))
+   (t (gneve-vslot-pos arg (cdr list)))))
 
-(defun open-film (filename)
+(defun gneve-open-film (filename)
   (interactive "ffilename:")
   (when (not (member (expand-file-name filename) vslots))
     (add-to-list 'vslots (expand-file-name filename) t)
@@ -212,59 +212,59 @@ There are three cases:
     (backward-char 2)
     (insert (format "\n\"%s\"" (expand-file-name filename)))
     (forward-char 2))
-  (setq vslot-n (vslot-pos (expand-file-name filename) (reverse vslots)))
+  (setq vslot-n (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
   (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))
   (print (expand-file-name filename)))
 
-(defun take-screenshot ()
+(defun gneve-take-screenshot ()
   (interactive)
   (process-send-string "my-process" "screenshot 0\n"))
 
-(defun next-frame ()
+(defun gneve-next-frame ()
   (interactive)
   (process-send-string "my-process" "frame_step\n"))
 
-(defun prev-frame ()
+(defun gneve-prev-frame ()
   (interactive)
   (process-send-string "my-process" "seek -0.08\npause\n"))
 
-(defun pause ()
+(defun gneve-pause ()
   (interactive)
   (process-send-string "my-process" "pause\n"))
 
-(defun write-marks ()
+(defun gneve-write-marks ()
   "write video slot, lastin, lastout time code into EDL buffer"
   (interactive)
   (switch-to-buffer gneve-buffer)
   (insert (format "%d:%s %s\n" vslot-n lastin lastout)))
 
-(defun one-sec-back ()
+(defun gneve-one-sec-back ()
   (interactive)
   (process-send-string "my-process" "seek -1.0\npause\n"))
 
-(defun one-sec-forward ()
+(defun gneve-one-sec-forward ()
   (interactive)
   (process-send-string "my-process" "seek 1.0\npause\n"))
 
-(defun five-sec-back ()
+(defun gneve-five-sec-back ()
   (interactive)
   (process-send-string "my-process" "seek -5.0\npause\n"))
 
-(defun five-sec-forward ()
+(defun gneve-five-sec-forward ()
   (interactive)
   (process-send-string "my-process" "seek 5.0\npause\n"))
 
-(defun mark-start ()
+(defun gneve-mark-start ()
   (interactive)
-  (setq lastin (marker))
+  (setq lastin (gneve-marker))
   (message "edit points %s %s\n" lastin lastout))
 
-(defun mark-end ()
+(defun gneve-mark-end ()
   (interactive)
-  (setq lastout (marker))
+  (setq lastout (gneve-marker))
   (message "edit points %s %s\n" lastin lastout))
 
-(defun marker ()
+(defun gneve-marker ()
   ;; copies latest mark to boo. copy and paste only to variable - new function write to buffer
   (interactive)
   (progn
@@ -282,12 +282,12 @@ There are three cases:
     (copy-region-as-kill start end)
     (car kill-ring))) ;; stend
 
-(defun goto-point ()
+(defun gneve-goto-point ()
   (interactive)  
   (setq timecode-string (read (current-buffer)))
   (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
 
-(defun tc-human ()
+(defun gneve-tc-human ()
   "calculate human readable timecode (hh:mm:ss,ms)"
   (setq tc-hour (/ (floor (string-to-number timecode-string)) 3600))
   (setq tc-min (/ (- (floor (string-to-number timecode-string)) (* 3600 tc-hour))  60))
@@ -295,48 +295,48 @@ There are three cases:
   (setq tc-msec (truncate (* 1000 (- tc-sec (floor tc-sec))))))
 
 
-(defun goto-timecode ()
+(defun gneve-goto-timecode ()
   "goto user input timecode"
   (interactive)
   (defvar timecode-newpos nil "new timecode position string")
-  (setq timecode-string (marker))
-  (tc-human)
+  (setq timecode-string (gneve-marker))
+  (gneve-tc-human)
   (setq timecode-newpos  (read-string "Goto timecode (min:sec) " (format "%d:%.2f" tc-min tc-sec ) nil nil))
   (setq tc-min (car (split-string timecode-newpos ":")))
   (setq tc-sec (cadr (split-string timecode-newpos ":")))
   (setq timecode-string (number-to-string (+ (* 60 (string-to-number tc-min)) (string-to-number tc-sec))))
   (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
 
-(defun goto-start ()
+(defun gneve-goto-start ()
   "goto mark start"
   (interactive)
   (process-send-string "my-process" (format "seek %s 2\npause\n" lastin)))
 
-(defun goto-end ()
+(defun gneve-goto-end ()
   "goto mark end"
   (interactive)
   (process-send-string "my-process" (format "seek %s 2\npause\n" lastout)))
 
-(defun buffer-render ()
+(defun gneve-render-buffer ()
   "render whole buffer"
   (interactive)
   (save-excursion
     (save-restriction
       (goto-char (point-min))
       (narrow-to-region (+ (search-forward  "))") 2) (point-max)) 
-      (render)))
+      (gneve-render)))
   (pop-to-buffer "avidemux"))
 
-(defun region-render ()
+(defun gneve-render-region ()
   "render only active region"
   (interactive)
   (save-excursion
     (save-restriction
       (narrow-to-region (region-beginning) (region-end))
-      (render)))
+      (gneve-render)))
   (pop-to-buffer "avidemux"))
 
-(defun save-rendered ()
+(defun gneve-save-rendered ()
   "save rendered video file"
   (interactive)
   (setq videoname (read-file-name "Save rendered video: " default-directory nil nil))
@@ -347,12 +347,12 @@ There are three cases:
   (shell-command (concat "if [ -f \"/tmp/test.srt\" ]; then cp -f /tmp/test.srt " (expand-file-name videoname) ".srt; fi"))
   (shell-command (concat "time cp -f /tmp/test.avi " (expand-file-name videoname))))
 
-(defun play-rendered ()
+(defun gneve-play-rendered ()
   "play rendered video file"
   (interactive)
   (start-process "my-process3" nil "mplayer" "-vo" "x11" "-sub" "/tmp/test.srt" "-quiet" "/tmp/test.avi"))
 
-(defun render()
+(defun gneve-render()
   "render edl to avidemux js script"
   (interactive)
   (defvar startframe nil "start frame")
@@ -365,16 +365,16 @@ There are three cases:
   ;; count segments and write header with this info and source file
   (let ((old-point (point))
         (counter 0)
-	(x 0))
+        (x 0))
     (goto-char (point-min))
     (while
-	(re-search-forward "^[0-9]" nil t)
+        (re-search-forward "^[0-9]" nil t)
       (setq counter (1+ counter)))
     (goto-char old-point)
     (message "%d" counter)
     (switch-to-buffer (find-file-noselect "/tmp/test.srt"))
     (erase-buffer)
-    (switch-to-buffer (find-file-noselect "/tmp/gnevetemp.js")) ;; should be blank
+    (switch-to-buffer (find-file-noselect "/tmp/gnevetemp.js")) ;should be blank
     (erase-buffer)
     (insert "//AD\n//created by gneve.el\nvar app = new Avidemux();\n")
     (insert (format "app.load(\"%s\");\n" (car vslots)))
@@ -384,14 +384,14 @@ There are three cases:
     (switch-to-buffer gneve-buffer)
     (goto-char (point-min))
     (while (< x counter)
-      (vslot-matcher)
-      (setq startframe (timecode-matcher))
+      (gneve-vslot-matcher)
+      (setq startframe (gneve-timecode-matcher))
       (forward-char 1)
       (switch-to-buffer  "gnevetemp.js")
       (insert (format "app.addSegment(%s,%d," vslot startframe))
       (setq x (1+ x))
       (switch-to-buffer gneve-buffer)
-      (setq endframe (timecode-matcher))
+      (setq endframe (gneve-timecode-matcher))
       ;; if there is subtitle string insert into srt buffer
       (unless (eolp)
 	(looking-at ".+")
@@ -399,10 +399,10 @@ There are three cases:
 	(switch-to-buffer "test.srt")
 	(insert (format "%d\n" subcounter))
 	(setq timecode-string (number-to-string (/ lengthrendered 25)))
-        (tc-human)
+    (gneve-tc-human)
 	(insert (format "%s:%s:%d,%s --> " tc-hour tc-min tc-sec tc-msec))
 	(setq timecode-string (number-to-string (/ (+ lengthrendered (- endframe startframe)) 25)))
-        (tc-human)
+    (gneve-tc-human)
 	(insert (format "%s:%s:%d,%s\n" tc-hour tc-min tc-sec tc-msec))
 	(insert (format "%s\n\n" subtitle))
 	(setq subcounter (1+ subcounter)))
@@ -429,23 +429,23 @@ There are three cases:
       (switch-to-buffer gneve-buffer)
       (goto-char old-point))))
 
-(defun timecode-matcher ()
+(defun gneve-timecode-matcher ()
   (let (timecode-string)
-    (if (looking-at number-regexp)
+    (if (looking-at gneve-number-regexp)
 	(goto-char (match-end 0)))
     (setq timecode-string (buffer-substring (match-beginning 0) (point)))
-    (micros-to-frame (string-to-number timecode-string))))
+    (gneve-micros-to-frame (string-to-number timecode-string))))
 
-(defun vslot-matcher ()
-  (if (looking-at vslot-regexp)
+(defun gneve-vslot-matcher ()
+  (if (looking-at gneve-vslot-regexp)
       (goto-char (match-end 0)) )
   (setq vslot (buffer-substring (match-beginning 1) (- (point) 1))))
 
-(defun micros-to-frame (number)
+(defun gneve-micros-to-frame (number)
 ;; 0.04 is one frame - divide by 0.04
   (/ number 0.04))
 
-(defun time-toframe (number)
+(defun gneve-time-to-frame (number)
 ;; min.sec conver to frame
   (/ number 0.04))
 
