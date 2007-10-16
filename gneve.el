@@ -64,6 +64,11 @@
 ;; -- checkout: svn checkout svn://svn.berlios.de/avidemux/branches/avidemux_2.4_branch/
 ;; -- install: make -f Makefile.dist ; ./configure ; make ; su ; make install
 
+;;; Bugs/todo:
+
+;; - In function gneve-tc-human use locale variables to avoid the need of four
+;; global bindings tc-hour, tc-min, tc-sec, tc-msec
+;; - What is the purpose of gneve-time-to-frame?
 
 ;;; History:
 ;; 
@@ -171,7 +176,8 @@ Render commands:
   (kill-all-local-variables)
   (setq major-mode 'gneve-mode)
   (setq mode-name "gneve")
-  (use-local-map gneve-mode-map))
+  (use-local-map gneve-mode-map)
+  (run-hooks 'gneve-mode-hook))
 
 (defun gneve-start ()
   "Create or reload a GNEVE session.
@@ -460,7 +466,7 @@ Argument FILENAME video filename."
   (setq vslot (buffer-substring (match-beginning 1) (- (point) 1))))
 
 (defun gneve-micros-to-frame (microsec)
-  "Convert microseconds to frame. 0.04 microsecond is one frame.
+  "Convert microseconds to frame.  0.04 microsecond is one frame.
 Argument MICROSEC microseconds."
   ;; 0.04 is one frame - divide by 0.04
   (/ microsec 0.04))
