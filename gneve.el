@@ -1,4 +1,5 @@
-;;; gneve.el - GNU Emacs video editor mode for editing video Edit Decision List or EDL
+;;; gneve.el --- GNU Emacs video editor mode for editing video Edit Decision
+;;; List or EDL
 
 ;; Copyright (C) 2007 Free Software Foundation, Inc.
 
@@ -28,18 +29,18 @@
 
 ;;; Commentary:
 
-;; Use: 
+;; Use:
 ;;     1. M-x gneve-start RET to invoke in gneve-mode
 ;;        C-x C-w to save *GNEVE* buffer as videname.edl for later usage
 ;;     2. C-x C-f any .edl file to open it in gneve-mode
-;;     3. C-h m to visit gneve mode help
+;;     3. C-h m to visit gneve-mode help
 
 ;;; Install:
 
 ;; Put something similar to the following in your ~/.emacs to use this file:
 ;;
 ;; (add-to-list 'load-path "~/path/to/gneve-mode/")
-;; (require 'gneve-mode)
+;; (require 'gneve)
 
 ;;; Dependency:
 
@@ -62,6 +63,10 @@
 ;; avidemux:  use svn version
 ;; -- checkout: svn checkout svn://svn.berlios.de/avidemux/branches/avidemux_2.4_branch/
 ;; -- install: make -f Makefile.dist ; ./configure ; make ; su ; make install
+
+
+;;; History:
+;; 
 
 ;;; Code:
 
@@ -92,33 +97,33 @@
     (define-key gneve-mode-map "P" 'gneve-play-rendered)
     (define-key gneve-mode-map "D" 'gneve-take-screenshot)
   gneve-mode-map)
-  "local keymap for gneve")
+  "Local keymap for GNEVE.")
 
 (defconst gneve-number-regexp
   "-?\\([0-9]+\\.?\\|\\.\\)[0-9]*\\(e[0-9]+\\)?"
   "Regular expression for recognizing numbers.")
 
-(defconst gneve-vslot-regexp 
+(defconst gneve-vslot-regexp
   "^\\([0-9]+\\):"
-  "Regexp for video slot number")
+  "Regexp for video slot number.")
 
-(defconst gneve-default-buffer "*GNEVE*" "Default gneve buffer")
+(defconst gneve-default-buffer "*GNEVE*" "Default gneve buffer.")
 
-(defvar gneve-buffer gneve-default-buffer "gneve-buffer")
-(defvar vslots nil "video slot file names list")
-(defvar vslot-n nil "video slot number")
-(defvar vslot nil "active video slot")
-(defvar filename nil "filename")
-(defvar lastin nil "lastin")
-(defvar lastout nil "lastout")
-(defvar start nil "start of timecode mark")
-(defvar end nil "end of timecode mark")
-(defvar videoname nil "rendered videofile name")
-(defvar timecode-string nil "timecode string")
-(defvar tc-hour nil "timecode hour part")
-(defvar tc-min nil "timecode minute part")
-(defvar tc-sec nil "timecode second part")
-(defvar tc-msec nil "timecode mili second part")
+(defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
+(defvar vslots nil "Video slot file names list.")
+(defvar vslot-n nil "Video slot number.")
+(defvar vslot nil "Active video slot.")
+;not used (defvar filename nil "Video filename.")
+(defvar lastin nil "Lastin.")
+(defvar lastout nil "Lastout.")
+(defvar start nil "Start of timecode mark.")
+(defvar end nil "End of timecode mark.")
+(defvar videoname nil "Rendered videofile name.")
+(defvar timecode-string nil "Timecode string.")
+(defvar tc-hour nil "Timecode hour part.")
+(defvar tc-min nil "Timecode minute part.")
+(defvar tc-sec nil "Timecode second part.")
+(defvar tc-msec nil "Timecode mili second part.")
 
 ;;;###autoload
 (defun gneve-mode()
@@ -129,7 +134,7 @@ Video commands:
   L - Pause/Play
   J - 1 frame back and pause
   K - 1 frame forward and pause
-  Q - 1 second back and pause 
+  Q - 1 second back and pause
   W - 1 second forward and pause
   A - 5 seconds back and pause
   S - 5 seconds forward and pause
@@ -138,9 +143,9 @@ Video commands:
 
   Layout summary:
 
-  Q W 
+  Q W
    A S     G H J K L
-          V   
+          V
 
 Editing commands:
   E - Mark start of a section
@@ -150,7 +155,7 @@ Editing commands:
   X - Goto end of marked section and pause
 
   Layout summary:
-      E R 
+      E R
 
     Z X C
 
@@ -160,7 +165,7 @@ Render commands:
   O - Save rendered video
   P - Play rendered video
 
-  Layout summary:  
+  Layout summary:
               U I O P"
   (interactive)
   (kill-all-local-variables)
@@ -174,8 +179,7 @@ There are three cases:
 1. If current buffer is a previously saved EDL buffer, then evaulate it
 2. If current buffer is a newly created EDL buffer, then create base a
   structure
-3. If there is no EDL buffer opened, then create a base structure
-"
+3. If there is no EDL buffer opened, then create a base structure"
   (interactive)
   (save-excursion
     ;; If there is no EDL buffer opened, open a temporary one
@@ -196,13 +200,17 @@ There are three cases:
       (insert "(setq vslots '( ))\n\n"))))
 
 (defun gneve-vslot-pos (arg list)
-  "video slot postion"
-  (cond 
+  "Get video slot position.
+Argument ARG video filename.
+Argument LIST vslot list."
+  (cond
    ((endp list) nil)
    ((equal arg (car list)) (length (cdr list)))
    (t (gneve-vslot-pos arg (cdr list)))))
 
 (defun gneve-open-film (filename)
+  "Open video file and create a vslot entry for it.
+Argument FILENAME video filename."
   (interactive "ffilename:")
   (when (not (member (expand-file-name filename) vslots))
     (add-to-list 'vslots (expand-file-name filename) t)
@@ -217,49 +225,59 @@ There are three cases:
   (print (expand-file-name filename)))
 
 (defun gneve-take-screenshot ()
+  "Take screenshot of current frame."
   (interactive)
   (process-send-string "my-process" "screenshot 0\n"))
 
 (defun gneve-next-frame ()
+  "Seek next frame."
   (interactive)
   (process-send-string "my-process" "frame_step\n"))
 
 (defun gneve-prev-frame ()
+  "Seek previous frame."
   (interactive)
   (process-send-string "my-process" "seek -0.08\npause\n"))
 
 (defun gneve-pause ()
+  "Pause video play."
   (interactive)
   (process-send-string "my-process" "pause\n"))
 
 (defun gneve-write-marks ()
-  "write video slot, lastin, lastout time code into EDL buffer"
+  "Write video slot, lastin, lastout time code into EDL buffer."
   (interactive)
   (switch-to-buffer gneve-buffer)
   (insert (format "%d:%s %s\n" vslot-n lastin lastout)))
 
 (defun gneve-one-sec-back ()
+  "Seek one sec back."
   (interactive)
   (process-send-string "my-process" "seek -1.0\npause\n"))
 
 (defun gneve-one-sec-forward ()
+  "Seek one sec forward."
   (interactive)
   (process-send-string "my-process" "seek 1.0\npause\n"))
 
 (defun gneve-five-sec-back ()
+  "Seek five sec back."
   (interactive)
   (process-send-string "my-process" "seek -5.0\npause\n"))
 
 (defun gneve-five-sec-forward ()
+  "Seek five sec forward."
   (interactive)
   (process-send-string "my-process" "seek 5.0\npause\n"))
 
 (defun gneve-mark-start ()
+  "Mark start of a section."
   (interactive)
   (setq lastin (gneve-marker))
   (message "edit points %s %s\n" lastin lastout))
 
 (defun gneve-mark-end ()
+  "Mark end of a section."
   (interactive)
   (setq lastout (gneve-marker))
   (message "edit points %s %s\n" lastin lastout))
@@ -283,12 +301,12 @@ There are three cases:
     (car kill-ring))) ;; stend
 
 (defun gneve-goto-point ()
-  (interactive)  
+  (interactive)
   (setq timecode-string (read (current-buffer)))
   (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
 
 (defun gneve-tc-human ()
-  "calculate human readable timecode (hh:mm:ss,ms)"
+  "Calculate human readable timecode (hh:mm:ss,ms)."
   (setq tc-hour (/ (floor (string-to-number timecode-string)) 3600))
   (setq tc-min (/ (- (floor (string-to-number timecode-string)) (* 3600 tc-hour))  60))
   (setq tc-sec (- (string-to-number timecode-string) (* 60 tc-min) (* 3600 tc-hour)))
@@ -296,7 +314,7 @@ There are three cases:
 
 
 (defun gneve-goto-timecode ()
-  "goto user input timecode"
+  "Goto user input timecode."
   (interactive)
   (defvar timecode-newpos nil "new timecode position string")
   (setq timecode-string (gneve-marker))
@@ -308,27 +326,27 @@ There are three cases:
   (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
 
 (defun gneve-goto-start ()
-  "goto mark start"
+  "Goto mark start."
   (interactive)
   (process-send-string "my-process" (format "seek %s 2\npause\n" lastin)))
 
 (defun gneve-goto-end ()
-  "goto mark end"
+  "Goto mark end."
   (interactive)
   (process-send-string "my-process" (format "seek %s 2\npause\n" lastout)))
 
 (defun gneve-render-buffer ()
-  "render whole buffer"
+  "Render whole buffer."
   (interactive)
   (save-excursion
     (save-restriction
       (goto-char (point-min))
-      (narrow-to-region (+ (search-forward  "))") 2) (point-max)) 
+      (narrow-to-region (+ (search-forward  "))") 2) (point-max))
       (gneve-render)))
   (pop-to-buffer "avidemux"))
 
 (defun gneve-render-region ()
-  "render only active region"
+  "Render only active region."
   (interactive)
   (save-excursion
     (save-restriction
@@ -337,7 +355,7 @@ There are three cases:
   (pop-to-buffer "avidemux"))
 
 (defun gneve-save-rendered ()
-  "save rendered video file"
+  "Save rendered video file."
   (interactive)
   (setq videoname (read-file-name "Save rendered video: " default-directory nil nil))
   (if (file-exists-p videoname)
@@ -348,12 +366,12 @@ There are three cases:
   (shell-command (concat "time cp -f /tmp/test.avi " (expand-file-name videoname))))
 
 (defun gneve-play-rendered ()
-  "play rendered video file"
+  "Play rendered video file."
   (interactive)
   (start-process "my-process3" nil "mplayer" "-vo" "x11" "-sub" "/tmp/test.srt" "-quiet" "/tmp/test.avi"))
 
 (defun gneve-render()
-  "render edl to avidemux js script"
+  "Render EDL to Avidemux JS script."
   (interactive)
   (defvar startframe nil "start frame")
   (defvar endframe nil "end frame")
@@ -441,12 +459,14 @@ There are three cases:
       (goto-char (match-end 0)) )
   (setq vslot (buffer-substring (match-beginning 1) (- (point) 1))))
 
-(defun gneve-micros-to-frame (number)
-;; 0.04 is one frame - divide by 0.04
-  (/ number 0.04))
+(defun gneve-micros-to-frame (microsec)
+  "Convert microseconds to frame. 0.04 microsecond is one frame.
+Argument MICROSEC microseconds."
+  ;; 0.04 is one frame - divide by 0.04
+  (/ microsec 0.04))
 
 (defun gneve-time-to-frame (number)
-;; min.sec conver to frame
+  ;; min.sec convert to frame
   (/ number 0.04))
 
 ;;; List functions
@@ -458,5 +478,6 @@ There are three cases:
 
 (add-to-list 'auto-mode-alist '("\\.edl\\'" . gneve-mode))
 
-(provide 'gneve-mode)
+(provide 'gneve)
 
+;;; gneve.el ends here
