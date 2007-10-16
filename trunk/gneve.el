@@ -66,9 +66,9 @@
 
 ;;; Bugs/todo:
 
-;; - Clean up function gneve-marker 
 ;; - In function gneve-tc-human use locale variables to avoid the need of four
 ;; global bindings: tc-hour, tc-min, tc-sec, tc-msec
+;; - In function gneve-render try to use locale variables
 ;; - Add prefix to global variables
 
 ;;; History:
@@ -292,18 +292,18 @@ Argument FILENAME video filename."
   "Read timecode values from mplayer buffer boo."
   ;; copies latest mark to buffer boo. copy and paste only to variable - new
   ;; function write to buffer
-    ;; goto end of buffer search back to equals and copy to last-in
-    (set-buffer "boo")
-    (process-send-string "my-process" "pausing get_time_pos\n")
-    (sleep-for 0.1)
-    (goto-char (point-max))
-    (backward-char 2)
-    (setq end (point))
-    (search-backward "=")
-    (forward-char)
-    (setq start (point))
-    (copy-region-as-kill start end)
-    (car kill-ring))
+  ;; goto end of buffer search back to equals and copy to last-in
+  (set-buffer "boo")
+  (process-send-string "my-process" "pausing get_time_pos\n")
+  (sleep-for 0.1)
+  (goto-char (point-max))
+  (backward-char 2)
+  (setq end (point))
+  (search-backward "=")
+  (forward-char)
+  (setq start (point))
+  (copy-region-as-kill start end)
+  (car kill-ring))
 
 (defun gneve-goto-point ()
   "Seek timecode."
@@ -318,18 +318,19 @@ Argument FILENAME video filename."
   (setq tc-sec (- (string-to-number timecode-string) (* 60 tc-min) (* 3600 tc-hour)))
   (setq tc-msec (truncate (* 1000 (- tc-sec (floor tc-sec))))))
 
-
 (defun gneve-goto-timecode ()
   "Goto user input timecode."
   (interactive)
-  (defvar timecode-newpos nil "new timecode position string")
-  (setq timecode-string (gneve-marker))
-  (gneve-tc-human)
-  (setq timecode-newpos  (read-string "Goto timecode (min:sec) " (format "%d:%.2f" tc-min tc-sec ) nil nil))
-  (setq tc-min (car (split-string timecode-newpos ":")))
-  (setq tc-sec (cadr (split-string timecode-newpos ":")))
-  (setq timecode-string (number-to-string (+ (* 60 (string-to-number tc-min)) (string-to-number tc-sec))))
-  (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
+    (let (timecode-newpos) ; new timecode position string
+      (setq timecode-string (gneve-marker))
+      (gneve-tc-human)
+      (setq timecode-newpos
+            (read-string "Goto timecode (min:sec) "
+                         (format "%d:%.2f" tc-min tc-sec) nil nil))
+      (setq tc-min (car (split-string timecode-newpos ":")))
+      (setq tc-sec (cadr (split-string timecode-newpos ":")))
+      (setq timecode-string (number-to-string (+ (* 60 (string-to-number tc-min)) (string-to-number tc-sec))))
+      (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string))))
 
 (defun gneve-goto-start ()
   "Goto mark start."
@@ -366,7 +367,7 @@ Argument FILENAME video filename."
   (setq videoname (read-file-name "Save rendered video: " default-directory nil nil))
   (if (file-exists-p videoname)
   (or (y-or-n-p (format "Video `%s' already exists; overwrite? " videoname))
-		 (error "Canceled")))
+      (error "Canceled")))
   (message videoname)
   (shell-command (concat "if [ -f \"/tmp/test.srt\" ]; then cp -f /tmp/test.srt " (expand-file-name videoname) ".srt; fi"))
   (shell-command (concat "time cp -f /tmp/test.avi " (expand-file-name videoname))))
@@ -408,28 +409,28 @@ Argument FILENAME video filename."
     (switch-to-buffer gneve-buffer)
     (goto-char (point-min))
     (while (< x counter)
-      (gneve-vslot-matcher)
-      (setq startframe (gneve-timecode-matcher))
+      (gneve-vslot-match)
+      (setq startframe (gneve-timecode-match))
       (forward-char 1)
       (switch-to-buffer  "gnevetemp.js")
       (insert (format "app.addSegment(%s,%d," vslot startframe))
       (setq x (1+ x))
       (switch-to-buffer gneve-buffer)
-      (setq endframe (gneve-timecode-matcher))
+      (setq endframe (gneve-timecode-match))
       ;; if there is subtitle string insert into srt buffer
       (unless (eolp)
-	(looking-at ".+")
-	(setq subtitle (match-string 0))
-	(switch-to-buffer "test.srt")
-	(insert (format "%d\n" subcounter))
-	(setq timecode-string (number-to-string (/ lengthrendered 25)))
-    (gneve-tc-human)
-	(insert (format "%s:%s:%d,%s --> " tc-hour tc-min tc-sec tc-msec))
-	(setq timecode-string (number-to-string (/ (+ lengthrendered (- endframe startframe)) 25)))
-    (gneve-tc-human)
-	(insert (format "%s:%s:%d,%s\n" tc-hour tc-min tc-sec tc-msec))
-	(insert (format "%s\n\n" subtitle))
-	(setq subcounter (1+ subcounter)))
+        (looking-at ".+")
+        (setq subtitle (match-string 0))
+        (switch-to-buffer "test.srt")
+        (insert (format "%d\n" subcounter))
+        (setq timecode-string (number-to-string (/ lengthrendered 25)))
+        (gneve-tc-human)
+        (insert (format "%s:%s:%d,%s --> " tc-hour tc-min tc-sec tc-msec))
+        (setq timecode-string (number-to-string (/ (+ lengthrendered (- endframe startframe)) 25)))
+        (gneve-tc-human)
+        (insert (format "%s:%s:%d,%s\n" tc-hour tc-min tc-sec tc-msec))
+        (insert (format "%s\n\n" subtitle))
+        (setq subcounter (1+ subcounter)))
       (switch-to-buffer  "gnevetemp.js")
       (insert (format "%d);\n" (- endframe startframe))) ;; length
       (setq lengthrendered (+ (- endframe startframe) lengthrendered))
@@ -453,16 +454,18 @@ Argument FILENAME video filename."
       (switch-to-buffer gneve-buffer)
       (goto-char old-point))))
 
-(defun gneve-timecode-matcher ()
+(defun gneve-timecode-match ()
+  "Match a timecode string."
   (let (timecode-string)
     (if (looking-at gneve-number-regexp)
-	(goto-char (match-end 0)))
+        (goto-char (match-end 0)))
     (setq timecode-string (buffer-substring (match-beginning 0) (point)))
     (gneve-micros-to-frame (string-to-number timecode-string))))
 
-(defun gneve-vslot-matcher ()
+(defun gneve-vslot-match ()
+  "Match a vslot string."
   (if (looking-at gneve-vslot-regexp)
-      (goto-char (match-end 0)) )
+      (goto-char (match-end 0)))
   (setq vslot (buffer-substring (match-beginning 1) (- (point) 1))))
 
 (defun gneve-micros-to-frame (microsec)
