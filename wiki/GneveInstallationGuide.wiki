@@ -5,7 +5,7 @@
 
 GNU Emacs Video Editor mode (GNEVE) is an elisp application based on a patched mplayer and avidemux. Mplayer previews source videos that can be controlled using keyboard commands. Avidemux renders Edit Decision List using GNU Emacs video editor mode.
 
-A patched version of mplayer and avidemux 2.4 has to be properly installed before using gnevel.el.
+A patched version of mplayer and avidemux 2.4 has to be properly installed before using gneve.el.
 
 
 = Installing gneve.el =
@@ -35,12 +35,11 @@ Put something similar to the following in your ~/.emacs to use this file:
 
 gnevel.el recommends mplayer 1.0 and avidemux 2.4 using lastest svn version
 
-
 = Patching and installing mplayer =
 
 First you have to patch mplayer in order to enable timecode precision up to 6 decimal digits. http://www.mplayerhq.hu/DOCS/HTML-single/en/MPlayer.html
 
- == checkout mplayer ==
+== checkout mplayer ==
 
 {{{
   svn checkout svn://svn.mplayerhq.hu/mplayer/trunk mplayer
@@ -61,7 +60,7 @@ First you have to patch mplayer in order to enable timecode precision up to 6 de
  	    break;
 }}}
 
-  == install mplayer into /usr/local/bin ==
+== install mplayer into /usr/local/bin ==
 
 {{{
 ./configure
@@ -72,15 +71,15 @@ make install
 
 = Installing avidemux =
 
-Avidemux may require some libriaries that has to be available. Please read instructions at http://www.avidemux.org/admWiki/index.php?title=Compiling_Avidemux
+Avidemux may require some libriaries that has to be available. Please read instructions at http://www.avidemux.org/admWiki/index.php?title=Compiling_Avidemux.
 
- == checkout avidemux ==
+== checkout avidemux ==
 
 {{{
   svn checkout svn://svn.berlios.de/avidemux/branches/avidemux_2.4_branch/
 }}}
 
- == install avidemux into /usr/local/bin ==
+== install avidemux into /usr/local/bin ==
 
 {{{
 make -f Makefile.dist
