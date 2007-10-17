@@ -68,7 +68,6 @@
 
 ;; - In function gneve-tc-human use locale variables to avoid the need of four
 ;; global bindings: tc-hour, tc-min, tc-sec, tc-msec
-;; - In function gneve-render try to use locale variables
 ;; - Add prefix to global variables
 
 ;;; History:
@@ -349,7 +348,7 @@ Argument FILENAME video filename."
     (save-restriction
       (goto-char (point-min))
       (narrow-to-region (+ (search-forward  "))") 2) (point-max))
-      (gneve-render)))
+      (gneve-render-video)))
   (pop-to-buffer "avidemux"))
 
 (defun gneve-render-region ()
@@ -358,7 +357,7 @@ Argument FILENAME video filename."
   (save-excursion
     (save-restriction
       (narrow-to-region (region-beginning) (region-end))
-      (gneve-render)))
+      (gneve-render-video)))
   (pop-to-buffer "avidemux"))
 
 (defun gneve-save-rendered ()
@@ -377,23 +376,20 @@ Argument FILENAME video filename."
   (interactive)
   (start-process "my-process3" nil "mplayer" "-vo" "x11" "-sub" "/tmp/test.srt" "-quiet" "/tmp/test.avi"))
 
-(defun gneve-render()
+(defun gneve-render-video ()
   "Render EDL to Avidemux JS script."
   (interactive)
-  (defvar startframe nil "start frame")
-  (defvar endframe nil "end frame")
-  (defvar subcounter 1 "subtitle counter")
-  (defvar subtitle nil "subtitle string")
-  (defvar lengthrendered 0 "length of rendered film")
-  (setq subcounter 1)
-  (setq lengthrendered 0)
-  ;; count segments and write header with this info and source file
-  (let ((old-point (point))
-        (counter 0)
-        (x 0))
+  ;; Count segments and write header with this info and source file
+  (let
+      ((subcounter 1)     ; subtitle counter
+       startframe         ; start frame
+       endframe           ; end frame
+       subtitle           ; subtitle string
+       (lengthrendered 0) ; length of rendered film
+       (old-point (point))
+       (counter 0))
     (goto-char (point-min))
-    (while
-        (re-search-forward "^[0-9]" nil t)
+    (while (re-search-forward "^[0-9]" nil t)
       (setq counter (1+ counter)))
     (goto-char old-point)
     (message "%d" counter)
@@ -408,16 +404,15 @@ Argument FILENAME video filename."
     (insert "app.clearSegments();\n")
     (switch-to-buffer gneve-buffer)
     (goto-char (point-min))
-    (while (< x counter)
+    (dotimes (i counter)
       (gneve-vslot-match)
       (setq startframe (gneve-timecode-match))
       (forward-char 1)
       (switch-to-buffer  "gnevetemp.js")
       (insert (format "app.addSegment(%s,%d," vslot startframe))
-      (setq x (1+ x))
       (switch-to-buffer gneve-buffer)
       (setq endframe (gneve-timecode-match))
-      ;; if there is subtitle string insert into srt buffer
+      ;; If there is subtitle string, insert into srt buffer
       (unless (eolp)
         (looking-at ".+")
         (setq subtitle (match-string 0))
@@ -432,27 +427,26 @@ Argument FILENAME video filename."
         (insert (format "%s\n\n" subtitle))
         (setq subcounter (1+ subcounter)))
       (switch-to-buffer  "gnevetemp.js")
-      (insert (format "%d);\n" (- endframe startframe))) ;; length
+      (insert (format "%d);\n" (- endframe startframe))) ; length
       (setq lengthrendered (+ (- endframe startframe) lengthrendered))
       (switch-to-buffer gneve-buffer)
       (forward-line 1)
       (beginning-of-line))
-    ;; write footer
-    (progn
-      (switch-to-buffer "gnevetemp.js")
-      (goto-char (point-max))
-      (insert (format "app.markerA=0;\napp.markerB=%d;\n" (- lengthrendered 1)))
-      (insert (format "app.video.setPostProc(3,3,0);\napp.video.setFps1000(25000);app.video.codec(\"Copy\",\"CQ=4\",\"0\");app.audio.reset();app.audio.codec(\"copy\",128,0,\"\");app.audio.normalizeMode=0;app.audio.normalizeValue=0;app.audio.delay=0;app.audio.mixer(\"NONE\");app.setContainer(\"AVI\");setSuccess(app.save(\"/tmp/test.avi\"));"))
-      ;; save and close temp file
-      (save-buffer "/tmp/gnevetemp.js")
-      (switch-to-buffer "test.srt")
-      (save-buffer "/tmp/test.srt")
-      ;; deal with avidemux
-      (start-process "my-process2" "avidemux" "avidemux2_cli" "--run" "/tmp/gnevetemp.js" "--video-process" "--save" "/tmp/test.avi" "--quit")
-      (kill-buffer "gnevetemp.js")
-      (kill-buffer "test.srt")
-      (switch-to-buffer gneve-buffer)
-      (goto-char old-point))))
+    ;; Write footer
+    (switch-to-buffer "gnevetemp.js")
+    (goto-char (point-max))
+    (insert (format "app.markerA=0;\napp.markerB=%d;\n" (- lengthrendered 1)))
+    (insert (format "app.video.setPostProc(3,3,0);\napp.video.setFps1000(25000);app.video.codec(\"Copy\",\"CQ=4\",\"0\");app.audio.reset();app.audio.codec(\"copy\",128,0,\"\");app.audio.normalizeMode=0;app.audio.normalizeValue=0;app.audio.delay=0;app.audio.mixer(\"NONE\");app.setContainer(\"AVI\");setSuccess(app.save(\"/tmp/test.avi\"));"))
+    ;; Save and close temp file
+    (save-buffer "/tmp/gnevetemp.js")
+    (switch-to-buffer "test.srt")
+    (save-buffer "/tmp/test.srt")
+    ;; Deal with Avidemux
+    (start-process "my-process2" "avidemux" "avidemux2_cli" "--run" "/tmp/gnevetemp.js" "--video-process" "--save" "/tmp/test.avi" "--quit")
+    (kill-buffer "gnevetemp.js")
+    (kill-buffer "test.srt")
+    (switch-to-buffer gneve-buffer)
+    (goto-char old-point)))
 
 (defun gneve-timecode-match ()
   "Match a timecode string."
