@@ -66,8 +66,9 @@
 
 ;;; Bugs/todo:
 
-;; - In function gneve-tc-human use locale variables to avoid the need of four
-;; global bindings: tc-hour, tc-min, tc-sec, tc-msec
+;; - Only function `vslot-match' uses variable `vslot', may be replaced by a locale binding
+;; - In function `gneve-tc-human' use locale variables to avoid the need of four
+;; global bindings: `tc-hour', `tc-min', `tc-sec', `tc-msec'
 ;; - Add prefix to global variables
 
 ;;; History:
@@ -120,7 +121,6 @@
 (defvar vslot nil "Active video slot.")
 (defvar lastin nil "Lastin.")
 (defvar lastout nil "Lastout.")
-(defvar videoname nil "Rendered videofile name.")
 (defvar timecode-string nil "Timecode string.")
 (defvar tc-hour nil "Timecode hour part.")
 (defvar tc-min nil "Timecode minute part.")
@@ -221,7 +221,7 @@ Argument LIST vslot list."
 (defun gneve-open-film (filename)
   "Open video file and create a vslot entry for it.
 Argument FILENAME video filename."
-  (interactive "ffilename:")
+  (interactive "fFind video file: ")
   (when (not (member (expand-file-name filename) vslots))
     (add-to-list 'vslots (expand-file-name filename) t)
     (switch-to-buffer gneve-buffer)
@@ -232,7 +232,7 @@ Argument FILENAME video filename."
     (forward-char 2))
   (setq vslot-n (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
   (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))
-  (print (expand-file-name filename)))
+  (message (expand-file-name filename)))
 
 (defun gneve-take-screenshot ()
   "Take screenshot of current frame."
@@ -284,13 +284,13 @@ Argument FILENAME video filename."
   "Mark start of a section."
   (interactive)
   (setq lastin (gneve-marker))
-  (message "edit points %s %s\n" lastin lastout))
+  (message "edit points %s %s" lastin lastout))
 
 (defun gneve-mark-end ()
   "Mark end of a section."
   (interactive)
   (setq lastout (gneve-marker))
-  (message "edit points %s %s\n" lastin lastout))
+  (message "edit points %s %s" lastin lastout))
 
 (defun gneve-marker ()
   "Read timecode values from mplayer buffer boo."
@@ -306,7 +306,7 @@ Argument FILENAME video filename."
     (search-backward "=")
     (forward-char)
     (copy-region-as-kill (point) end)
-    (car kill-ring))
+    (car kill-ring)))
 
 (defun gneve-goto-point ()
   "Seek timecode."
@@ -364,16 +364,20 @@ Argument FILENAME video filename."
       (gneve-render-video)))
   (pop-to-buffer "avidemux"))
 
-(defun gneve-save-rendered ()
-  "Save rendered video file."
-  (interactive)
-  (setq videoname (read-file-name "Save rendered video: " default-directory nil nil))
+(defun gneve-save-rendered (videoname)
+  "Save rendered video file as VIDEONAME."
+  (interactive
+   (list
+    (read-file-name "Save rendered video file: " default-directory nil nil)))
   (if (file-exists-p videoname)
-  (or (y-or-n-p (format "Video `%s' already exists; overwrite? " videoname))
-      (error "Canceled")))
+      (or (y-or-n-p (format "Video `%s' already exists; overwrite? " videoname))
+          (error "Canceled")))
   (message videoname)
-  (shell-command (concat "if [ -f \"/tmp/test.srt\" ]; then cp -f /tmp/test.srt " (expand-file-name videoname) ".srt; fi"))
-  (shell-command (concat "time cp -f /tmp/test.avi " (expand-file-name videoname))))
+  (shell-command
+   (concat "if [ -f \"/tmp/test.srt\" ]; then cp -f /tmp/test.srt "
+           (expand-file-name videoname) ".srt; fi"))
+  (shell-command
+   (concat "time cp -f /tmp/test.avi " (expand-file-name videoname))))
 
 (defun gneve-play-rendered ()
   "Play rendered video file."
