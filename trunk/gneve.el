@@ -136,21 +136,21 @@
 
 Video commands:
   V - Visit video file and start playing
-  L - Pause/Play
+  G - Goto timecode of user input
+  C - Goto timecode of current point
+  L - Play/pause
   J - 1 frame back and pause
   K - 1 frame forward and pause
   Q - 1 second back and pause
   W - 1 second forward and pause
   A - 5 seconds back and pause
   S - 5 seconds forward and pause
-  C - Goto timecode of current point
-  G - Goto timecode of user input
 
   Layout summary:
 
   Q W
-   A S     G H J K L
-          V
+   A S     G   J K L
+        C V
 
 Editing commands:
   E - Mark start of a section
@@ -161,8 +161,8 @@ Editing commands:
 
   Layout summary:
       E R
-
-    Z X C
+            H
+    Z X
 
 Render commands:
   U - Render active region
