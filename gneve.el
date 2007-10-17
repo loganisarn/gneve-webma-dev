@@ -31,7 +31,7 @@
 
 ;; Use:
 ;;     1. M-x gneve-start RET to invoke in gneve-mode
-;;        C-x C-w to save *GNEVE* buffer as videname.edl for later usage
+;;        C-x C-w to save *GNEVE* buffer as videname.edl for latter usage
 ;;     2. C-x C-f any .edl file to open it in gneve-mode
 ;;     3. C-h m to visit gneve-mode help
 
@@ -176,6 +176,7 @@ Render commands:
   (setq major-mode 'gneve-mode)
   (setq mode-name "gneve")
   (use-local-map gneve-mode-map)
+  (add-hook 'after-save-hook 'gneve-write-file nil t)
   (run-hooks 'gneve-mode-hook))
 
 (defun gneve-start ()
@@ -203,6 +204,12 @@ There are three cases:
          (forward-char 2))
       ;; else create base structure
       (insert "(setq vslots '( ))\n\n"))))
+
+(defun gneve-write-file ()
+  "Update variable `gneve-buffer' on buffer visiting file change."
+  (if (not (string-equal (buffer-name) gneve-buffer))
+      (setq gneve-buffer (buffer-name)))
+  nil)
 
 (defun gneve-vslot-pos (arg list)
   "Get video slot position.
