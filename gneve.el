@@ -66,6 +66,8 @@
 
 ;;; Bugs/todo:
 
+;; - Support other video players e.g. VLC
+;; - Support customized running of Mplayer
 ;; - Only function `vslot-match' uses variable `vslot', may be replaced by a locale binding
 ;; - In function `gneve-tc-human' use locale variables to avoid the need of four
 ;; global bindings: `tc-hour', `tc-min', `tc-sec', `tc-msec'
@@ -119,8 +121,8 @@
 (defvar vslots nil "Video slot file names list.")
 (defvar vslot-n nil "Video slot number.")
 (defvar vslot nil "Active video slot.")
-(defvar lastin nil "Lastin.")
-(defvar lastout nil "Lastout.")
+(defvar gneve-mark-lastin nil "Start of marked section")
+(defvar gneve-mark-lastout nil "End of marked section.")
 (defvar timecode-string nil "Timecode string.")
 (defvar tc-hour nil "Timecode hour part.")
 (defvar tc-min nil "Timecode minute part.")
@@ -209,19 +211,18 @@ There are three cases:
       (setq gneve-buffer (buffer-name)))
   nil)
 
-(defun gneve-vslot-pos (arg list)
-  "Get video slot position.
-Argument ARG video filename.
-Argument LIST vslot list."
+(defun gneve-vslot-pos (vslot list)
+  "Get position of VSLOT in LIST."
   (cond
    ((endp list) nil)
-   ((equal arg (car list)) (length (cdr list)))
-   (t (gneve-vslot-pos arg (cdr list)))))
+   ((equal vslot (car list)) (length (cdr list)))
+   (t (gneve-vslot-pos vslot (cdr list)))))
 
 (defun gneve-open-film (filename)
   "Open video file and create a vslot entry for it.
 Argument FILENAME video filename."
   (interactive "fFind video file: ")
+  ;; If video file is not already in a slot
   (when (not (member (expand-file-name filename) vslots))
     (add-to-list 'vslots (expand-file-name filename) t)
     (switch-to-buffer gneve-buffer)
@@ -258,7 +259,7 @@ Argument FILENAME video filename."
   "Write video slot, lastin, lastout time code into EDL buffer."
   (interactive)
   (switch-to-buffer gneve-buffer)
-  (insert (format "%d:%s %s\n" vslot-n lastin lastout)))
+  (insert (format "%d:%s %s\n" vslot-n gneve-mark-lastin gneve-mark-lastout)))
 
 (defun gneve-one-sec-back ()
   "Seek one sec back."
@@ -283,14 +284,14 @@ Argument FILENAME video filename."
 (defun gneve-mark-start ()
   "Mark start of a section."
   (interactive)
-  (setq lastin (gneve-marker))
-  (message "edit points %s %s" lastin lastout))
+  (setq gneve-mark-lastin (gneve-marker))
+  (message "edit points %s %s" gneve-mark-lastin gneve-mark-lastout))
 
 (defun gneve-mark-end ()
   "Mark end of a section."
   (interactive)
-  (setq lastout (gneve-marker))
-  (message "edit points %s %s" lastin lastout))
+  (setq gneve-mark-lastout (gneve-marker))
+  (message "edit points %s %s" gneve-mark-lastin gneve-mark-lastout))
 
 (defun gneve-marker ()
   "Read timecode values from mplayer buffer boo."
@@ -338,12 +339,12 @@ Argument FILENAME video filename."
 (defun gneve-goto-start ()
   "Goto mark start."
   (interactive)
-  (process-send-string "my-process" (format "seek %s 2\npause\n" lastin)))
+  (process-send-string "my-process" (format "seek %s 2\npause\n" gneve-mark-lastin)))
 
 (defun gneve-goto-end ()
   "Goto mark end."
   (interactive)
-  (process-send-string "my-process" (format "seek %s 2\npause\n" lastout)))
+  (process-send-string "my-process" (format "seek %s 2\npause\n" gneve-mark-lastout)))
 
 (defun gneve-render-buffer ()
   "Render whole buffer."
