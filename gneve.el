@@ -120,8 +120,6 @@
 (defvar vslot nil "Active video slot.")
 (defvar lastin nil "Lastin.")
 (defvar lastout nil "Lastout.")
-(defvar start nil "Start of timecode mark.")
-(defvar end nil "End of timecode mark.")
 (defvar videoname nil "Rendered videofile name.")
 (defvar timecode-string nil "Timecode string.")
 (defvar tc-hour nil "Timecode hour part.")
@@ -296,20 +294,19 @@ Argument FILENAME video filename."
 
 (defun gneve-marker ()
   "Read timecode values from mplayer buffer boo."
-  ;; copies latest mark to buffer boo. copy and paste only to variable - new
-  ;; function write to buffer
-  ;; goto end of buffer search back to equals and copy to last-in
+  ;; Copy latest mark to buffer boo. Copy and paste only to variable - new
+  ;; function write to buffer.
+  ;; Goto end of buffer search back to equals and copy to last-in.
   (set-buffer "boo")
   (process-send-string "my-process" "pausing get_time_pos\n")
   (sleep-for 0.1)
   (goto-char (point-max))
   (backward-char 2)
-  (setq end (point))
-  (search-backward "=")
-  (forward-char)
-  (setq start (point))
-  (copy-region-as-kill start end)
-  (car kill-ring))
+  (let ((end (point)))
+    (search-backward "=")
+    (forward-char)
+    (copy-region-as-kill (point) end)
+    (car kill-ring))
 
 (defun gneve-goto-point ()
   "Seek timecode."
