@@ -68,6 +68,7 @@
 
 ;; - Support other video players e.g. VLC
 ;; - Support customized running of Mplayer
+;; - Do not open directory as video file in function `gneve-open-film'
 ;; - In function `gneve-tc-human' use locale variables to avoid the need of four
 ;; global bindings: `tc-hour', `tc-min', `tc-sec', `tc-msec'
 ;; - Add prefix to global variables
@@ -191,7 +192,8 @@ There are three cases:
         (pop-to-buffer gneve-default-buffer nil))
     (if (not (eq major-mode 'gneve-mode))
         (gneve-mode))
-    (setq gneve-buffer (buffer-name))
+    (setq gneve-buffer (buffer-name)
+          vslots nil)
     ;; If current buffer is a previously saved EDL buffer
     (goto-char (point-min))
     ;; If buffer contains valid vslots definition
