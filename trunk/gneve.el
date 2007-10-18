@@ -118,7 +118,7 @@
 
 (defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
 (defvar vslots nil "Video slot file names list.")
-(defvar vslot-n nil "Video slot number.")
+(defvar gneve-vslot-n nil "Video slot number.")
 (defvar gneve-mark-lastin nil "Start of marked section")
 (defvar gneve-mark-lastout nil "End of marked section.")
 (defvar timecode-string nil "Timecode string.")
@@ -229,9 +229,12 @@ Argument FILENAME video filename."
     (backward-char 2)
     (insert (format "\n\"%s\"" (expand-file-name filename)))
     (forward-char 2))
-  (setq vslot-n (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
-  (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))
-  (message (expand-file-name filename)))
+  ;; Lookup video in vslots and start playing
+  (setq gneve-vslot-n
+        (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
+  (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-xy" "320"
+                 "-osdlevel" "1" "-quiet" (expand-file-name filename))
+  (message (format "Now playing: %s" (expand-file-name filename))))
 
 (defun gneve-take-screenshot ()
   "Take screenshot of current frame."
@@ -257,7 +260,8 @@ Argument FILENAME video filename."
   "Write video slot, lastin, lastout time code into EDL buffer."
   (interactive)
   (switch-to-buffer gneve-buffer)
-  (insert (format "%d:%s %s\n" vslot-n gneve-mark-lastin gneve-mark-lastout)))
+  (insert
+   (format "%d:%s %s\n" gneve-vslot-n gneve-mark-lastin gneve-mark-lastout)))
 
 (defun gneve-one-sec-back ()
   "Seek one sec back."
