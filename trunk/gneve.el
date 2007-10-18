@@ -120,8 +120,8 @@
 (defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
 (defvar vslots nil "Video slot file names list.")
 (defvar gneve-vslot-n nil "Video slot number.")
-(defvar gneve-mark-lastin nil "Start of marked section")
-(defvar gneve-mark-lastout nil "End of marked section.")
+(defvar gneve-mark-lastin 0 "Start of marked section")
+(defvar gneve-mark-lastout 0 "End of marked section.")
 (defvar timecode-string nil "Timecode string.")
 (defvar tc-hour nil "Timecode hour part.")
 (defvar tc-min nil "Timecode minute part.")
@@ -193,7 +193,9 @@ There are three cases:
     (if (not (eq major-mode 'gneve-mode))
         (gneve-mode))
     (setq gneve-buffer (buffer-name)
-          vslots nil)
+          vslots nil
+          gneve-mark-lastin 0
+          gneve-mark-lastout 0)
     ;; If current buffer is a previously saved EDL buffer
     (goto-char (point-min))
     ;; If buffer contains valid vslots definition
