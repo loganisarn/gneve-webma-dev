@@ -68,7 +68,6 @@
 
 ;; - Support other video players e.g. VLC
 ;; - Support customized running of Mplayer
-;; - Only function `vslot-match' uses variable `vslot', may be replaced by a locale binding
 ;; - In function `gneve-tc-human' use locale variables to avoid the need of four
 ;; global bindings: `tc-hour', `tc-min', `tc-sec', `tc-msec'
 ;; - Add prefix to global variables
@@ -120,7 +119,6 @@
 (defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
 (defvar vslots nil "Video slot file names list.")
 (defvar vslot-n nil "Video slot number.")
-(defvar vslot nil "Active video slot.")
 (defvar gneve-mark-lastin nil "Start of marked section")
 (defvar gneve-mark-lastout nil "End of marked section.")
 (defvar timecode-string nil "Timecode string.")
@@ -394,6 +392,7 @@ Argument FILENAME video filename."
        startframe         ; start frame
        endframe           ; end frame
        subtitle           ; subtitle string
+       vslot              ; active video slot
        (lengthrendered 0) ; length of rendered film
        (old-point (point))
        (counter 0))
@@ -414,7 +413,7 @@ Argument FILENAME video filename."
     (switch-to-buffer gneve-buffer)
     (goto-char (point-min))
     (dotimes (i counter)
-      (gneve-vslot-match)
+      (setq vslot (gneve-vslot-match))
       (setq startframe (gneve-timecode-match))
       (forward-char 1)
       (switch-to-buffer  "gnevetemp.js")
@@ -469,7 +468,7 @@ Argument FILENAME video filename."
   "Match a vslot string."
   (if (looking-at gneve-vslot-regexp)
       (goto-char (match-end 0)))
-  (setq vslot (buffer-substring (match-beginning 1) (- (point) 1))))
+  (buffer-substring (match-beginning 1) (- (point) 1)))
 
 (defun gneve-micros-to-frame (microsec)
   "Convert microseconds to frame.  0.04 microsecond is one frame.
