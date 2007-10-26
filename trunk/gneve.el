@@ -90,6 +90,8 @@
     (define-key gneve-mode-map "W" 'gneve-one-sec-forward)
     (define-key gneve-mode-map "A" 'gneve-five-sec-back)
     (define-key gneve-mode-map "S" 'gneve-five-sec-forward)
+    (define-key gneve-mode-map "T" 'gneve-insert-timeline)
+
     ;; Mark operation
     (define-key gneve-mode-map "E" 'gneve-mark-start)
     (define-key gneve-mode-map "R" 'gneve-mark-end)
@@ -127,6 +129,12 @@
 (defvar tc-min nil "Timecode minute part.")
 (defvar tc-sec nil "Timecode second part.")
 (defvar tc-msec nil "Timecode mili second part.")
+(defvar gneve-timeline-matrix '((0.2 0.4 0.6 0.8 1.0)
+				(1 2 3 4 5)
+				(5 10 15 20 25))
+  "Timeline definitions for 1 frame, 1 sec, 5 sec.")
+(defvar gneve-timeline-step 0 "Range of timeline.")
+(defvar gneve-thumb-dir "/tmp/gneve-thumbs/" "Cache dir of thumbnails.")
 
 ;;;###autoload
 (defun gneve-mode()
@@ -245,14 +253,44 @@ Argument FILENAME video filename."
   (interactive)
   (process-send-string "my-process" "screenshot 0\n"))
 
+(defun gneve-insert-timeline ()
+  "Insert timeline according to editing context:
+    1. if timecode line start end
+    2. if newline according to forward speed:
+       5 frame, 1 sec and 5 sec timeline"
+  ;; decide context, timecode line or current point and speed
+  (interactive)
+  (setq timecode-string (gneve-marker))
+  (switch-to-buffer gneve-buffer)
+  (setq thumbfiles '() )
+  ;; Make thumbnail cache directory for current previewing video
+  (let ((thumbdir (concat gneve-thumb-dir (md5 (nth-value gneve-vslot-n vslots)))))
+    (if (not (file-exists-p thumbdir))
+	(make-directory thumbdir))
+    ;; Make thumbfiles if not exists 
+    (let (thumbfile)
+      (dolist (i (nth-value gneve-timeline-step gneve-timeline-matrix))
+	(setq thumb-position (/ (truncate (* 5 (+ i (string-to-number timecode-string)))) 5.0))
+	(setq thumbfile (format "thumb-%g.png" thumb-position))
+	(add-to-list 'thumbfiles thumbfile t)
+	(if (not (file-exists-p (concat thumbdir "/" thumbfile)))
+	    (start-process "my-gneve-thumbs" "GNEVETHUBMS" "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth-value gneve-vslot-n vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "120x90" (concat thumbdir "/" thumbfile))))
+      (gneve-tc-human)
+      (insert (format "\n[%s]%s:%s:%d,%s (%d) " gneve-vslot-n tc-hour tc-min tc-sec tc-msec gneve-timeline-step))  
+      (dolist (j thumbfiles)
+	(insert-image (create-image (concat thumbdir "/" j)) j nil nil))
+      (insert "\n"))))
+
 (defun gneve-next-frame ()
   "Seek next frame."
   (interactive)
+  (setq gneve-timeline-step 0)
   (process-send-string "my-process" "frame_step\n"))
 
 (defun gneve-prev-frame ()
   "Seek previous frame."
   (interactive)
+  (setq gneve-timeline-step 0)
   (process-send-string "my-process" "seek -0.08\npause\n"))
 
 (defun gneve-pause ()
@@ -270,21 +308,25 @@ Argument FILENAME video filename."
 (defun gneve-one-sec-back ()
   "Seek one sec back."
   (interactive)
+  (setq gneve-timeline-step 1)
   (process-send-string "my-process" "seek -1.0\npause\n"))
 
 (defun gneve-one-sec-forward ()
   "Seek one sec forward."
   (interactive)
+  (setq gneve-timeline-step 1)
   (process-send-string "my-process" "seek 1.0\npause\n"))
 
 (defun gneve-five-sec-back ()
   "Seek five sec back."
   (interactive)
+  (setq gneve-timeline-step 2)
   (process-send-string "my-process" "seek -5.0\npause\n"))
 
 (defun gneve-five-sec-forward ()
   "Seek five sec forward."
   (interactive)
+  (setq gneve-timeline-step 2)
   (process-send-string "my-process" "seek 5.0\npause\n"))
 
 (defun gneve-mark-start ()
