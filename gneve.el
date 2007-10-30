@@ -276,7 +276,7 @@ Argument FILENAME video filename."
             thumbfile (format "thumb-%g.png" thumb-position))
       (add-to-list 'thumbfiles thumbfile t)
       (if (not (file-exists-p (concat thumbdir "/" thumbfile)))
-          (start-process "my-gneve-thumbs" "GNEVETHUBMS" "ffmpeg" "-v" "0"
+          (start-process "my-gneve-thumbs" nil "ffmpeg" "-v" "0"
                          "-y" "-ss" (number-to-string thumb-position) "-i"
                          (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes"
                          "1" "-an" "-f" "rawvideo" "-s" "160x120"
