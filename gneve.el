@@ -207,7 +207,7 @@ There are three cases:
     ;; If current buffer is a previously saved EDL buffer
     (goto-char (point-min))
     ;; If buffer contains valid vslots definition
-    (if (looking-at-p "(setq vslots")
+    (if (looking-at "(setq vslots")
         ;; then evaluate it
         (and
          (eval-region 0 (search-forward "))" nil t))
@@ -264,17 +264,17 @@ Argument FILENAME video filename."
   (switch-to-buffer gneve-buffer)
   (setq thumbfiles '() )
   ;; Make thumbnail cache directory for current previewing video
-  (let ((thumbdir (concat gneve-thumb-dir (md5 (nth-value gneve-vslot-n vslots)))))
+  (let ((thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n vslots)))))
     (if (not (file-exists-p thumbdir))
 	(make-directory thumbdir))
     ;; Make thumbfiles if not exists 
     (let (thumbfile)
-      (dolist (i (nth-value gneve-timeline-step gneve-timeline-matrix))
+      (dolist (i (nth gneve-timeline-step gneve-timeline-matrix))
 	(setq thumb-position (/ (truncate (* 5 (+ i (string-to-number timecode-string)))) 5.0))
 	(setq thumbfile (format "thumb-%g.png" thumb-position))
 	(add-to-list 'thumbfiles thumbfile t)
 	(if (not (file-exists-p (concat thumbdir "/" thumbfile)))
-	    (start-process "my-gneve-thumbs" "GNEVETHUBMS" "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth-value gneve-vslot-n vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "120x90" (concat thumbdir "/" thumbfile))))
+	    (start-process "my-gneve-thumbs" "GNEVETHUBMS" "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "120x90" (concat thumbdir "/" thumbfile))))
       (gneve-tc-human)
       (insert (format "\n[%s]%s:%s:%d,%s (%d) " gneve-vslot-n tc-hour tc-min tc-sec tc-msec gneve-timeline-step))  
       (dolist (j thumbfiles)
