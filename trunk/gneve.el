@@ -68,7 +68,6 @@
 
 ;; - Support other video players e.g. VLC
 ;; - Support customized running of Mplayer
-;; - Do not open directory as video file in function `gneve-open-film'
 ;; - In function `gneve-tc-human' use locale variables to avoid the need of four
 ;; global bindings: `tc-hour', `tc-min', `tc-sec', `tc-msec'
 ;; - Add prefix to global variables
@@ -231,7 +230,9 @@ There are three cases:
 (defun gneve-open-film (filename)
   "Open video file and create a vslot entry for it.
 Argument FILENAME video filename."
-  (interactive "fFind video file: ")
+   (interactive (nbutlast (find-file-read-args "Find video file: " t)))
+   (if (not (file-regular-p filename))
+       (error "%s is not a video file" filename))
   ;; If video file is not already in a slot
   (when (not (member (expand-file-name filename) vslots))
     (add-to-list 'vslots (expand-file-name filename) t)
