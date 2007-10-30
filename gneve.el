@@ -121,16 +121,17 @@
 (defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
 (defvar vslots nil "Video slot file names list.")
 (defvar gneve-vslot-n nil "Video slot number.")
-(defvar gneve-mark-lastin 0 "Start of marked section")
+(defvar gneve-mark-lastin 0 "Start of marked section.")
 (defvar gneve-mark-lastout 0 "End of marked section.")
 (defvar timecode-string nil "Timecode string.")
 (defvar tc-hour nil "Timecode hour part.")
 (defvar tc-min nil "Timecode minute part.")
 (defvar tc-sec nil "Timecode second part.")
 (defvar tc-msec nil "Timecode mili second part.")
-(defvar gneve-timeline-matrix '((0.2 0.4 0.6 0.8 1.0)
-				(1 2 3 4 5)
-				(5 10 15 20 25))
+(defvar gneve-timeline-matrix
+  '((0.2 0.4 0.6 0.8 1.0)
+    (1 2 3 4 5)
+    (5 10 15 20 25))
   "Timeline definitions for 1 frame, 1 sec, 5 sec.")
 (defvar gneve-timeline-step 0 "Range of timeline.")
 (defvar gneve-thumb-dir "/tmp/gneve-thumbs/" "Cache dir of thumbnails.")
@@ -245,8 +246,9 @@ Argument FILENAME video filename."
   ;; Lookup video in vslots and start playing
   (setq gneve-vslot-n
         (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
-  (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-xy" "320"
-                 "-osdlevel" "1" "-quiet" (expand-file-name filename))
+  (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-vf"
+                 "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet"
+                 (expand-file-name filename))
   (message (format "Now playing: %s" (expand-file-name filename))))
 
 (defun gneve-take-screenshot ()
@@ -256,31 +258,37 @@ Argument FILENAME video filename."
 
 (defun gneve-insert-timeline ()
   "Insert timeline according to editing context:
-    1. if timecode line start end
-    2. if newline according to forward speed:
-       5 frame, 1 sec and 5 sec timeline"
-  ;; decide context, timecode line or current point and speed
+1. If timecode line start end
+2. If newline according to forward speed: 5 frame, 1 sec and 5 sec timeline"
+  ;; Decide context, timecode line or current point and speed
   (interactive)
   (setq timecode-string (gneve-marker))
   (switch-to-buffer gneve-buffer)
-  (setq thumbfiles '() )
   ;; Make thumbnail cache directory for current previewing video
-  (let ((thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n vslots)))))
+  (let ((thumbfiles) (thumbfile) (thumb-position)
+        (thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n vslots)))))
     (if (not (file-exists-p thumbdir))
-	(make-directory thumbdir))
-    ;; Make thumbfiles if not exists 
-    (let (thumbfile)
-      (dolist (i (nth gneve-timeline-step gneve-timeline-matrix))
-	(setq thumb-position (/ (truncate (* 5 (+ i (string-to-number timecode-string)))) 5.0))
-	(setq thumbfile (format "thumb-%g.png" thumb-position))
-	(add-to-list 'thumbfiles thumbfile t)
-	(if (not (file-exists-p (concat thumbdir "/" thumbfile)))
-	    (start-process "my-gneve-thumbs" "GNEVETHUBMS" "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "120x90" (concat thumbdir "/" thumbfile))))
-      (gneve-tc-human)
-      (insert (format "\n[%s]%s:%s:%d,%s (%d) " gneve-vslot-n tc-hour tc-min tc-sec tc-msec gneve-timeline-step))  
-      (dolist (j thumbfiles)
-	(insert-image (create-image (concat thumbdir "/" j)) j nil nil))
-      (insert "\n"))))
+        (make-directory thumbdir t))
+    ;; Make thumbfiles if not exists
+    (dolist (i (nth gneve-timeline-step gneve-timeline-matrix))
+      (setq thumb-position
+            (/ (truncate (* 5 (+ i (string-to-number timecode-string)))) 5.0)
+            thumbfile (format "thumb-%g.png" thumb-position))
+      (add-to-list 'thumbfiles thumbfile t)
+      (if (not (file-exists-p (concat thumbdir "/" thumbfile)))
+          (start-process "my-gneve-thumbs" "GNEVETHUBMS" "ffmpeg" "-v" "0"
+                         "-y" "-ss" (number-to-string thumb-position) "-i"
+                         (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes"
+                         "1" "-an" "-f" "rawvideo" "-s" "160x120"
+                         (concat thumbdir "/" thumbfile))))
+    (gneve-tc-human)
+    (insert
+     (format "\n%s:%s %f\n" gneve-vslot-n timecode-string
+             (+ (car (last (nth gneve-timeline-step gneve-timeline-matrix)))
+                (string-to-number timecode-string))))
+    (dolist (j thumbfiles)
+      (insert-image (create-image (concat thumbdir "/" j)) nil nil nil))
+    (insert "\n")))
 
 (defun gneve-next-frame ()
   "Seek next frame."
