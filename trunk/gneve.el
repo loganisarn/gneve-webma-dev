@@ -276,7 +276,7 @@ Argument FILENAME video filename."
           (start-process "my-gneve-thumbs" nil "ffmpeg" "-v" "0"
                          "-y" "-ss" (number-to-string thumb-position) "-i"
                          (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes"
-                         "1" "-an" "-f" "rawvideo" "-s" "120x90"
+                         "1" "-an" "-f" "rawvideo" "-s" "80x60"
                          (concat thumbdir "/" thumbfile))))
     (gneve-tc-human)
     (insert
