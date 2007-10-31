@@ -184,27 +184,16 @@ Render commands:
   (setq mode-name "gneve")
   (use-local-map gneve-mode-map)
   (add-hook 'after-save-hook 'gneve-write-file nil t)
+  (gneve-init)
   (run-hooks 'gneve-mode-hook))
 
-(defun gneve-start ()
-  "Create or reload a GNEVE session.
-There are three cases:
-1. If current buffer is a previously saved EDL buffer, then evaulate it
-2. If current buffer is a newly created EDL buffer, then create base a
-  structure
-3. If there is no EDL buffer opened, then create a base structure"
-  (interactive)
+(defun gneve-init ()
+  "Initialize a GNEVE session."
+  (setq gneve-buffer (buffer-name)
+        vslots nil
+        gneve-mark-lastin 0
+        gneve-mark-lastout 0)
   (save-excursion
-    ;; If there is no EDL buffer opened, open a temporary one
-    (if (not (string-match "\\.edl" (buffer-name)))
-        (pop-to-buffer gneve-default-buffer nil))
-    (if (not (eq major-mode 'gneve-mode))
-        (gneve-mode))
-    (setq gneve-buffer (buffer-name)
-          vslots nil
-          gneve-mark-lastin 0
-          gneve-mark-lastout 0)
-    ;; If current buffer is a previously saved EDL buffer
     (goto-char (point-min))
     ;; If buffer contains valid vslots definition
     (if (looking-at "(setq vslots")
@@ -214,6 +203,20 @@ There are three cases:
          (forward-char 2))
       ;; else create base structure
       (insert "(setq vslots '( ))\n\n"))))
+
+(defun gneve-start ()
+  "Create or reload a GNEVE session.
+There are three cases:
+1. If current buffer is a previously saved EDL buffer, then evaulate it
+2. If current buffer is a newly created EDL buffer, then create base a
+  structure
+3. If there is no EDL buffer opened, then create a base structure"
+  (interactive)
+  ;; If there is no EDL buffer opened, open a temporary one
+  (pop-to-buffer gneve-default-buffer nil)
+  (if (not (eq major-mode 'gneve-mode))
+      (gneve-mode)
+    (gneve-init)))
 
 (defun gneve-write-file ()
   "Update variable `gneve-buffer' on buffer visiting file change."
