@@ -205,14 +205,8 @@ Render commands:
       (insert "(setq vslots '( ))\n\n"))))
 
 (defun gneve-start ()
-  "Create or reload a GNEVE session.
-There are three cases:
-1. If current buffer is a previously saved EDL buffer, then evaulate it
-2. If current buffer is a newly created EDL buffer, then create base a
-  structure
-3. If there is no EDL buffer opened, then create a base structure"
+  "Create a new GNEVE session."
   (interactive)
-  ;; If there is no EDL buffer opened, open a temporary one
   (pop-to-buffer gneve-default-buffer nil)
   (if (not (eq major-mode 'gneve-mode))
       (gneve-mode)
