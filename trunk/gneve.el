@@ -279,13 +279,14 @@ Argument FILENAME video filename."
           (start-process "my-gneve-thumbs" nil "ffmpeg" "-v" "0"
                          "-y" "-ss" (number-to-string thumb-position) "-i"
                          (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes"
-                         "1" "-an" "-f" "rawvideo" "-s" "160x120"
+                         "1" "-an" "-f" "rawvideo" "-s" "120x90"
                          (concat thumbdir "/" thumbfile))))
     (gneve-tc-human)
     (insert
      (format "\n%s:%s %f\n" gneve-vslot-n timecode-string
              (+ (car (last (nth gneve-timeline-step gneve-timeline-matrix)))
                 (string-to-number timecode-string))))
+    (sleep-for 0.1)
     (dolist (j thumbfiles)
       (insert-image (create-image (concat thumbdir "/" j)) nil nil nil))
     (insert "\n")))
