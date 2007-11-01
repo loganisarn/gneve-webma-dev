@@ -119,15 +119,25 @@
 (defconst gneve-default-buffer "*GNEVE*" "Default gneve buffer.")
 
 (defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
+
 (defvar vslots nil "Video slot file names list.")
+
 (defvar gneve-vslot-n nil "Video slot number.")
+
 (defvar gneve-mark-lastin 0 "Start of marked section.")
+
 (defvar gneve-mark-lastout 0 "End of marked section.")
+
 (defvar timecode-string nil "Timecode string.")
+
 (defvar tc-hour nil "Timecode hour part.")
+
 (defvar tc-min nil "Timecode minute part.")
+
 (defvar tc-sec nil "Timecode second part.")
+
 (defvar tc-msec nil "Timecode mili second part.")
+
 (defvar gneve-timeline-matrix
   '((0.2 0.4 0.6 0.8 1.0)
     (1 2 3 4 5)
@@ -280,7 +290,7 @@ Argument FILENAME video filename."
                          (concat thumbdir "/" thumbfile))))
     (gneve-tc-human)
     (insert
-     (format "\n%s:%s %f\n" gneve-vslot-n timecode-string
+     (format "\n%s:%s %.5f\n" gneve-vslot-n timecode-string
              (+ (car (last (nth gneve-timeline-step gneve-timeline-matrix)))
                 (string-to-number timecode-string))))
     (sleep-for 0.1)
