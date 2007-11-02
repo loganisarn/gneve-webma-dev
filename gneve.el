@@ -66,7 +66,6 @@
 
 ;;; Bugs/todo:
 
-;; - Allow simultanly editing more EDLs (seperated editing process, rendering process)
 ;; - For parsing EDLs use registers instead of regex search
 ;; - Support other video players e.g. VLC
 ;; - Support customized running of Mplayer
@@ -170,7 +169,7 @@ Video commands:
 
   Layout summary:
 
-  Q W
+  Q W     T
    A S     G   J K L
         C V
 
@@ -180,6 +179,7 @@ Editing commands:
   H - Write marked section to EDL buffer
   Z - Goto start of marked section and pause
   X - Goto end of marked section and pause
+  T - Write timeline
 
   Layout summary:
       E R
