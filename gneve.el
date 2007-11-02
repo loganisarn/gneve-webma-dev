@@ -66,6 +66,8 @@
 
 ;;; Bugs/todo:
 
+;; - Allow simultanly editing more EDLs (seperated editing process, rendering process)
+;; - For parsing EDLs use registers instead of regex search
 ;; - Support other video players e.g. VLC
 ;; - Support customized running of Mplayer
 ;; - In function `gneve-tc-human' use locale variables to avoid the need of four
@@ -120,9 +122,13 @@
 
 (defvar gneve-buffer gneve-default-buffer "GNEVE working buffer.")
 
+(defvar gneve-video-process nil "GNEVE video process ID.")
+
+(defvar gneve-video-process-buffer nil "GNEVE video process buffer name.")
+
 (defvar vslots nil "Video slot file names list.")
 
-(defvar gneve-vslot-n nil "Video slot number.")
+(defvar gneve-vslot-n 0 "Video slot number.")
 
 (defvar gneve-mark-lastin 0 "Start of marked section.")
 
@@ -195,14 +201,20 @@ Render commands:
   (use-local-map gneve-mode-map)
   (add-hook 'after-save-hook 'gneve-write-file nil t)
   (gneve-init)
+  (make-variable-buffer-local 'gneve-buffer)
+  (make-variable-buffer-local 'gneve-video-process)
+  (make-variable-buffer-local 'gneve-video-process-buffer)
+  (make-variable-buffer-local 'gneve-mark-lastin)
+  (make-variable-buffer-local 'gneve-mark-lastout)
+  (make-variable-buffer-local 'vslots)
+  (make-variable-buffer-local 'gneve-vslot-n)
   (run-hooks 'gneve-mode-hook))
 
 (defun gneve-init ()
   "Initialize a GNEVE session."
+  ;; Set default
   (setq gneve-buffer (buffer-name)
-        vslots nil
-        gneve-mark-lastin 0
-        gneve-mark-lastout 0)
+        vslots nil)
   (save-excursion
     (goto-char (point-min))
     ;; If buffer contains valid vslots definition
@@ -253,15 +265,22 @@ Argument FILENAME video filename."
   ;; Lookup video in vslots and start playing
   (setq gneve-vslot-n
         (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
-  (start-process "my-process" "boo" "mplayer" "-slave" "-vo" "x11" "-vf"
-                 "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet"
-                 (expand-file-name filename))
+  ;; Initialize markers
+  (setq gneve-mark-lastin 0
+        gneve-mark-lastout 0)
+  ;; Set process ID and process buffer
+  (setq gneve-video-process
+        (concat "gneve-video-process-" gneve-buffer)
+        gneve-video-process-buffer
+        (concat "gneve-video-process-buffer-" gneve-buffer))
+  ;; Start video process
+  (start-process gneve-video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-vf" "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))
   (message (format "Now playing: %s" (expand-file-name filename))))
 
 (defun gneve-take-screenshot ()
   "Take screenshot of current frame."
   (interactive)
-  (process-send-string "my-process" "screenshot 0\n"))
+  (process-send-string gneve-video-process "screenshot 0\n"))
 
 (defun gneve-insert-timeline ()
   "Insert timeline according to editing context:
@@ -302,18 +321,18 @@ Argument FILENAME video filename."
   "Seek next frame."
   (interactive)
   (setq gneve-timeline-step 0)
-  (process-send-string "my-process" "frame_step\n"))
+  (process-send-string gneve-video-process "frame_step\n"))
 
 (defun gneve-prev-frame ()
   "Seek previous frame."
   (interactive)
   (setq gneve-timeline-step 0)
-  (process-send-string "my-process" "seek -0.08\npause\n"))
+  (process-send-string gneve-video-process "seek -0.08\npause\n"))
 
 (defun gneve-pause ()
   "Pause video play."
   (interactive)
-  (process-send-string "my-process" "pause\n"))
+  (process-send-string gneve-video-process "pause\n"))
 
 (defun gneve-write-marks ()
   "Write video slot, lastin, lastout time code into EDL buffer."
@@ -326,25 +345,25 @@ Argument FILENAME video filename."
   "Seek one sec back."
   (interactive)
   (setq gneve-timeline-step 1)
-  (process-send-string "my-process" "seek -1.0\npause\n"))
+  (process-send-string gneve-video-process "seek -1.0\npause\n"))
 
 (defun gneve-one-sec-forward ()
   "Seek one sec forward."
   (interactive)
   (setq gneve-timeline-step 1)
-  (process-send-string "my-process" "seek 1.0\npause\n"))
+  (process-send-string gneve-video-process "seek 1.0\npause\n"))
 
 (defun gneve-five-sec-back ()
   "Seek five sec back."
   (interactive)
   (setq gneve-timeline-step 2)
-  (process-send-string "my-process" "seek -5.0\npause\n"))
+  (process-send-string gneve-video-process "seek -5.0\npause\n"))
 
 (defun gneve-five-sec-forward ()
   "Seek five sec forward."
   (interactive)
   (setq gneve-timeline-step 2)
-  (process-send-string "my-process" "seek 5.0\npause\n"))
+  (process-send-string gneve-video-process "seek 5.0\npause\n"))
 
 (defun gneve-mark-start ()
   "Mark start of a section."
@@ -359,26 +378,27 @@ Argument FILENAME video filename."
   (message "edit points %s %s" gneve-mark-lastin gneve-mark-lastout))
 
 (defun gneve-marker ()
-  "Read timecode values from mplayer buffer boo."
-  ;; Copy latest mark to buffer boo. Copy and paste only to variable - new
-  ;; function write to buffer.
+  "Read timecode values from `gneve-video-process-buffer'."
+  ;; Copy latest mark to `gneve-video-process-buffer'.
+  ;; Copy and paste only to variable - new function write to buffer.
   ;; Goto end of buffer search back to equals and copy to last-in.
-  (set-buffer "boo")
-  (process-send-string "my-process" "pausing get_time_pos\n")
-  (sleep-for 0.1)
-  (goto-char (point-max))
-  (backward-char 2)
-  (let ((end (point)))
-    (search-backward "=")
-    (forward-char)
-    (copy-region-as-kill (point) end)
-    (car kill-ring)))
+  (save-excursion
+    (set-buffer gneve-video-process-buffer)
+    (process-send-string gneve-video-process "pausing get_time_pos\n")
+    (sleep-for 0.1)
+    (goto-char (point-max))
+    (backward-char 2)
+    (let ((end (point)))
+      (search-backward "=")
+      (forward-char)
+      (copy-region-as-kill (point) end)
+      (car kill-ring))))
 
 (defun gneve-goto-point ()
   "Seek timecode."
   (interactive)
   (setq timecode-string (read (current-buffer)))
-  (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string)))
+  (process-send-string gneve-video-process (format "seek %s 2\npause\n" timecode-string)))
 
 (defun gneve-tc-human ()
   "Calculate human readable timecode (hh:mm:ss,ms)."
@@ -399,17 +419,17 @@ Argument FILENAME video filename."
       (setq tc-min (car (split-string timecode-newpos ":")))
       (setq tc-sec (cadr (split-string timecode-newpos ":")))
       (setq timecode-string (number-to-string (+ (* 60 (string-to-number tc-min)) (string-to-number tc-sec))))
-      (process-send-string "my-process" (format "seek %s 2\npause\n" timecode-string))))
+      (process-send-string gneve-video-process (format "seek %s 2\npause\n" timecode-string))))
 
 (defun gneve-goto-start ()
   "Goto mark start."
   (interactive)
-  (process-send-string "my-process" (format "seek %s 2\npause\n" gneve-mark-lastin)))
+  (process-send-string gneve-video-process (format "seek %s 2\npause\n" gneve-mark-lastin)))
 
 (defun gneve-goto-end ()
   "Goto mark end."
   (interactive)
-  (process-send-string "my-process" (format "seek %s 2\npause\n" gneve-mark-lastout)))
+  (process-send-string gneve-video-process (format "seek %s 2\npause\n" gneve-mark-lastout)))
 
 (defun gneve-render-buffer ()
   "Render whole buffer."
