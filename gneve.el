@@ -175,7 +175,7 @@
   "Timecode mili second part.")
 
 (defvar gneve-timeline-matrix
-  '((0.2 0.4 0.6 0.8 1.0)
+  '((0.04 0.08 0.12 0.16 0.2)
     (1 2 3 4 5)
     (5 10 15 20 25))
   "Timeline definitions for 1 frame, 1 sec, 5 sec.")
@@ -330,7 +330,7 @@ Argument FILENAME video filename."
     ;; Make thumbfiles if not exists
     (dolist (i (nth gneve-timeline-step gneve-timeline-matrix))
       (setq thumb-position
-            (/ (truncate (* 5 (+ i (string-to-number timecode-string)))) 5.0)
+            (+ i (string-to-number timecode-string))
             thumbfile (format "thumb-%g.png" thumb-position))
       (add-to-list 'thumbfiles thumbfile t)
       (if (not (file-exists-p (concat thumbdir "/" thumbfile)))
