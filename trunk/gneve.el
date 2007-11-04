@@ -129,7 +129,8 @@
   "^\\([0-9]+\\):"
   "Regexp for video slot number.")
 
-(defconst gneve-default-buffer "*GNEVE*" "Default gneve buffer.")
+(defconst gneve-default-buffer "*GNEVE*"
+  "Default GNEVE buffer.")
 
 (defvar gneve-buffer gneve-default-buffer
   "GNEVE working buffer.")
@@ -203,7 +204,6 @@ Video commands:
   S - 5 seconds forward and pause
 
   Layout summary:
-
   Q W
    A S     G   J K L
         C V
@@ -275,38 +275,39 @@ Render commands:
 (defun gneve-vslot-pos (vslot list)
   "Get position of VSLOT in LIST."
   (cond
-   ((endp list) nil)
+   ((null list) nil)
    ((equal vslot (car list)) (length (cdr list)))
    (t (gneve-vslot-pos vslot (cdr list)))))
 
-(defun gneve-open-film (filename)
-  "Open video file and create a vslot entry for it.
-Argument FILENAME video filename."
-   (interactive (nbutlast (find-file-read-args "Find video file: " t)))
-   (if (not (file-regular-p filename))
-       (error "%s is not a video file" filename))
+(defun gneve-open-film (filename render-buffer)
+  "Open video file FILENAME in RENDER-BUFFER and create a vslot entry for it."
+  (interactive
+   (list (car (find-file-read-args "Find video file: " t))
+         (buffer-name)))
+  (if (not (file-regular-p filename))
+      (error "%s is not a video file" filename))
   ;; If video file is not already in a slot
   (when (not (member (expand-file-name filename) vslots))
     (add-to-list 'vslots (expand-file-name filename) t)
-    (switch-to-buffer gneve-buffer)
+    (switch-to-buffer render-buffer)
     (goto-char (point-min))
     (search-forward "))")
     (backward-char 2)
     (insert (format "\n\"%s\"" (expand-file-name filename)))
     (forward-char 2))
-  ;; Lookup video in vslots and start playing
   (setq gneve-vslot-n
-        (gneve-vslot-pos (expand-file-name filename) (reverse vslots)))
-  ;; Initialize markers
-  (setq gneve-mark-lastin 0
+        ;; Lookup video in vslots
+        (gneve-vslot-pos (expand-file-name filename) (reverse vslots))
+        ;; Initialize markers
+        gneve-mark-lastin 0
         gneve-mark-lastout 0)
-  ;; Set process ID and process buffer
-  (setq gneve-video-process
-        (concat "gneve-video-process-" gneve-buffer)
-        gneve-video-process-buffer
-        (concat "gneve-video-process-buffer-" gneve-buffer))
   ;; Start video process
-  (start-process gneve-video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-vf" "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))
+  (let ((video-process (concat "gneve-video-process-" render-buffer)))
+    ;; Set process ID and process buffer  
+    (setq gneve-video-process-buffer (generate-new-buffer-name video-process)
+          ;; Function `start-process' automatically generates new process ID
+          ;; when specified one exists
+          gneve-video-process (process-name (start-process video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-vf" "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename)))))
   (message (format "Now playing: %s" (expand-file-name filename))))
 
 (defun gneve-take-screenshot ()
@@ -324,6 +325,7 @@ Argument FILENAME video filename."
   (switch-to-buffer gneve-buffer)
   ;; Make thumbnail cache directory for current previewing video
   (let ((thumbfiles) (thumbfile) (thumb-position)
+        (thumb-process (concat "gneve-create-thumbs" gneve-buffer))
         (thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n vslots)))))
     (if (not (file-exists-p thumbdir))
         (make-directory thumbdir t))
@@ -334,11 +336,7 @@ Argument FILENAME video filename."
             thumbfile (format "thumb-%g.png" thumb-position))
       (add-to-list 'thumbfiles thumbfile t)
       (if (not (file-exists-p (concat thumbdir "/" thumbfile)))
-          (start-process "my-gneve-thumbs" nil "ffmpeg" "-v" "0"
-                         "-y" "-ss" (number-to-string thumb-position) "-i"
-                         (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes"
-                         "1" "-an" "-f" "rawvideo" "-s" "80x60"
-                         (concat thumbdir "/" thumbfile))))
+          (start-process thumb-process nil "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "80x60" (concat thumbdir "/" thumbfile))))
     (gneve-tc-human)
     (insert
      (format "\n%s:%s %.5f\n" gneve-vslot-n timecode-string
@@ -471,7 +469,7 @@ Argument FILENAME video filename."
       (goto-char (point-min))
       (narrow-to-region (+ (search-forward  "))") 2) (point-max))
       (gneve-render-video render-buffer)))
-  (pop-to-buffer "avidemux"))
+  (pop-to-buffer (concat "gneve-render-process-buffer-" render-buffer)))
 
 (defun gneve-render-region (render-buffer)
   "Render only active region."
@@ -480,35 +478,42 @@ Argument FILENAME video filename."
     (save-restriction
       (narrow-to-region (region-beginning) (region-end))
       (gneve-render-video render-buffer)))
-  (pop-to-buffer "avidemux"))
+  (pop-to-buffer (concat "gneve-render-process-buffer-" render-buffer)))
 
-(defun gneve-save-rendered (videoname)
+(defun gneve-save-rendered (videoname render-buffer)
   "Save rendered video file as VIDEONAME."
   (interactive
    (list
-    (read-file-name "Save rendered video file: " default-directory nil nil)))
+    (read-file-name "Save rendered video file: " default-directory nil nil)
+    (buffer-name)))
   (if (file-exists-p videoname)
       (or (y-or-n-p (format "Video `%s' already exists; overwrite? " videoname))
           (error "Canceled")))
   (message videoname)
-  (shell-command
-   (format
-    "if [ -f \"%s/test.srt\" ]; then cp -f %s/test.srt %s.srt; fi"
-    gneve-tmp-dir gneve-tmp-dir (expand-file-name videoname)))
-  (shell-command
-   (format
-    "time cp -f %s/test.avi %s" gneve-tmp-dir (expand-file-name videoname))))
+  (shell-command (format "if [ -f \"%s/%s.srt\" ]; then cp -f %s/%s.srt %s.srt; fi" gneve-tmp-dir render-buffer gneve-tmp-dir render-buffer (expand-file-name videoname)))
+  (shell-command (format "time cp -f %s/%s.avi %s" gneve-tmp-dir render-buffer (expand-file-name videoname))))
 
-(defun gneve-play-rendered ()
+(defun gneve-play-rendered (render-buffer)
   "Play rendered video file."
-  (interactive)
-  (start-process "my-process3" nil "mplayer" "-vo" "x11" "-sub" (concat gneve-tmp-dir "/test.srt") "-quiet" (concat gneve-tmp-dir "/test.avi")))
+  (interactive (list (buffer-name)))
+  (let ((srt (concat gneve-tmp-dir "/" render-buffer ".srt"))
+        (avi (concat gneve-tmp-dir "/" render-buffer ".avi"))
+        (playback-process (concat "gneve-playback-process-" render-buffer)))
+    (start-process playback-process nil "mplayer" "-vo" "x11" "-sub" srt "-quiet" avi)))
 
 (defun gneve-render-video (render-buffer)
   "Render EDL to Avidemux JS script."
   ;; Count segments and write header with this info and source file
-  (let ((subcounter 1) (lengthrendered 0) (old-point (point)) (counter 0)
-        startframe endframe subtitle vslot my-vslots)
+  (let* ((subcounter 1) (lengthrendered 0) (old-point (point)) (counter 0)
+         (srt (concat render-buffer ".srt"))
+         (js (concat render-buffer ".js"))
+         (avi (concat render-buffer ".avi"))
+         (srt-path (concat gneve-tmp-dir "/" srt))
+         (js-path (concat gneve-tmp-dir "/" js))
+         (avi-path (concat gneve-tmp-dir "/" avi))
+         (render-process (concat "gneve-render-process-" render-buffer))
+         (render-process-buffer (concat "gneve-render-process-buffer-" render-buffer))
+         startframe endframe subtitle vslot my-vslots)
     ;; `vslots' is buffer local variable, in future we should use the proper
     ;; mode prefix to avoid this "my-vslots" hack
     (set-buffer render-buffer)
@@ -519,9 +524,9 @@ Argument FILENAME video filename."
       (setq counter (1+ counter)))
     (goto-char old-point)
     (message "Number of timecode strings: %d" counter)
-    (switch-to-buffer (find-file-noselect (concat gneve-tmp-dir "/test.srt")))
+    (switch-to-buffer (find-file-noselect srt-path))
     (erase-buffer)
-    (switch-to-buffer (find-file-noselect (concat gneve-tmp-dir "/gnevetemp.js")))
+    (switch-to-buffer (find-file-noselect js-path))
     (erase-buffer)
     (insert "//AD\n//created by gneve.el\nvar app = new Avidemux();\n")
     (insert (format "app.load(\"%s\");\n" (car my-vslots)))
@@ -534,7 +539,7 @@ Argument FILENAME video filename."
       (setq vslot (gneve-vslot-match))
       (setq startframe (gneve-timecode-match))
       (forward-char 1)
-      (switch-to-buffer  "gnevetemp.js")
+      (switch-to-buffer js)
       (insert (format "app.addSegment(%s,%d," vslot startframe))
       (switch-to-buffer render-buffer)
       (setq endframe (gneve-timecode-match))
@@ -542,7 +547,7 @@ Argument FILENAME video filename."
       (unless (eolp)
         (looking-at ".+")
         (setq subtitle (match-string 0))
-        (switch-to-buffer "test.srt")
+        (switch-to-buffer srt)
         (insert (format "%d\n" subcounter))
         (setq timecode-string (number-to-string (/ lengthrendered 25)))
         (gneve-tc-human)
@@ -552,25 +557,25 @@ Argument FILENAME video filename."
         (insert (format "%s:%s:%d,%s\n" tc-hour tc-min tc-sec tc-msec))
         (insert (format "%s\n\n" subtitle))
         (setq subcounter (1+ subcounter)))
-      (switch-to-buffer  "gnevetemp.js")
+      (switch-to-buffer js)
       (insert (format "%d);\n" (- endframe startframe))) ; length
       (setq lengthrendered (+ (- endframe startframe) lengthrendered))
       (switch-to-buffer render-buffer)
       (forward-line 1)
       (beginning-of-line))
     ;; Write footer
-    (switch-to-buffer "gnevetemp.js")
+    (switch-to-buffer js)
     (goto-char (point-max))
     (insert (format "app.markerA=0;\napp.markerB=%d;\n" (- lengthrendered 1)))
-    (insert (format "app.video.setPostProc(3,3,0);\napp.video.setFps1000(25000);app.video.codec(\"Copy\",\"CQ=4\",\"0\");app.audio.reset();app.audio.codec(\"copy\",128,0,\"\");app.audio.normalizeMode=0;app.audio.normalizeValue=0;app.audio.delay=0;app.audio.mixer(\"NONE\");app.setContainer(\"AVI\");setSuccess(app.save(\"%s/test.avi\"));" gneve-tmp-dir))
-    ;; Save and close temp file
-    (save-buffer (concat gneve-tmp-dir "/gnevetemp.js"))
-    (switch-to-buffer "test.srt")
-    (save-buffer (concat gneve-tmp-dir "/test.srt"))
+    (insert (format "app.video.setPostProc(3,3,0);\napp.video.setFps1000(25000);app.video.codec(\"Copy\",\"CQ=4\",\"0\");app.audio.reset();app.audio.codec(\"copy\",128,0,\"\");app.audio.normalizeMode=0;app.audio.normalizeValue=0;app.audio.delay=0;app.audio.mixer(\"NONE\");app.setContainer(\"AVI\");setSuccess(app.save(\"%s\"));" avi-path))
+    ;; Save and close temp files
+    (save-buffer js-path)
+    (switch-to-buffer srt)
+    (save-buffer srt-path)
     ;; Deal with Avidemux
-    (start-process "my-process2" "avidemux" "avidemux2_cli" "--run" (concat gneve-tmp-dir "/gnevetemp.js") "--video-process" "--save" (concat gneve-tmp-dir "/test.avi") "--quit")
-    (kill-buffer "gnevetemp.js")
-    (kill-buffer "test.srt")
+    (start-process render-process render-process-buffer "avidemux2_cli" "--run" js-path "--video-process" "--save" avi-path "--quit")
+    (kill-buffer js)
+    (kill-buffer srt)
     (switch-to-buffer render-buffer)
     (goto-char old-point)))
 
@@ -599,7 +604,6 @@ Argument MICROSEC microseconds."
 (defalias 'first 'car)
 (defalias 'second 'cadr)
 (defalias 'rest 'cdr)
-(defalias 'endp 'null)
 
 (add-to-list 'auto-mode-alist '("\\.edl\\'" . gneve-mode))
 
