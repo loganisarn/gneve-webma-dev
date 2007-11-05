@@ -66,12 +66,10 @@
 
 ;;; Bugs/todo:
 
-;; - For parsing EDLs use registers instead of regex search
 ;; - Support other video players e.g. VLC
 ;; - Support customized running of Mplayer
 ;; - In function `gneve-tc-human' use locale variables to avoid the need of four
 ;; global bindings: `tc-hour', `tc-min', `tc-sec', `tc-msec'
-;; - Add prefix to global variables
 
 ;;; History:
 ;; 
@@ -81,7 +79,7 @@
 (defgroup gneve nil
   "*GNU Emacs Video Editor mode for editing video Edit Decision List or EDL."
   :link '(url-link "http://www.1010.co.uk/gneve.html")
-  :prefix "erc-"
+  :prefix "gneve-"
   :group 'multimedia
   :group 'applications)
 
