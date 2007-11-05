@@ -246,7 +246,8 @@ Render commands:
   (setq major-mode 'gneve-mode)
   (setq mode-name "GNEVE")
   (use-local-map gneve-mode-map)
-  (add-hook 'after-save-hook 'gneve-write-file nil t)
+  (add-hook 'after-save-hook 'gneve-write-file-hook nil t)
+  (add-hook 'kill-buffer-hook 'gneve-kill-buffer-hook nil t)
   (gneve-init)
   (run-hooks 'gneve-mode-hook))
 
@@ -288,15 +289,26 @@ Render commands:
   "Create a new GNEVE session."
   (interactive)
   (pop-to-buffer gneve-default-buffer nil)
-  (if (not (eq major-mode 'gneve-mode))
-      (gneve-mode)
-    (gneve-init)))
+  (if (eq major-mode 'gneve-mode)
+      (gneve-init)
+    (gneve-mode)))
 
-(defun gneve-write-file ()
+(defun gneve-write-file-hook ()
   "Update variable `gneve-buffer' on buffer visiting file change."
   (if (not (string-equal (buffer-name) gneve-buffer))
       (setq gneve-buffer (buffer-name)))
   ;; Return nil to not to break hook flow
+  nil)
+
+(defun gneve-kill-buffer-hook ()
+  "Kill video process and related buffer started from current buffer."
+  (and gneve-video-process
+       (string= "run" (process-status gneve-video-process))
+       (or (yes-or-no-p "There is an active video process; exit anyway? ")
+           (error "Cancelled"))
+       (kill-process gneve-video-process))
+  (and gneve-video-process-buffer
+       (kill-buffer gneve-video-process-buffer))
   nil)
 
 (defun gneve-vslot-pos (vslot list)
@@ -338,13 +350,16 @@ Render commands:
         ;; Initialize markers
         gneve-mark-lastin 0
         gneve-mark-lastout 0)
+  ;; Kill buffer related to a previously exited video process
+  (if (and gneve-video-process (not (processp gneve-video-process)))
+      (kill-buffer gneve-video-process-buffer))
   ;; Start video process
   (let ((video-process (concat "gneve-video-process-" render-buffer)))
     ;; Set process ID and process buffer
     (setq gneve-video-process-buffer (generate-new-buffer-name video-process)
           ;; Function `start-process' automatically generates new process ID
           ;; when specified one exists
-          gneve-video-process (process-name (start-process video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-vf" "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename)))))
+          gneve-video-process (start-process video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-vf" "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))))
   (message (format "Now playing: %s" (expand-file-name filename))))
 
 (defun gneve-take-screenshot ()
