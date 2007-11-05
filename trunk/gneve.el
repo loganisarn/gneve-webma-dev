@@ -86,7 +86,17 @@
   :group 'applications)
 
 (defcustom gneve-tmp-dir "/tmp/gneve"
-  "*GNEVE temporary directory.  No trailing slash."
+  "*GNEVE main temporary directory.  No trailing slash."
+  :type 'directory
+  :group 'gneve)
+
+(defcustom gneve-thumb-dir (concat gneve-tmp-dir "/thumbs")
+  "*Cache directory of image thumbnails.  No trailing slash."
+  :type 'directory
+  :group 'gneve)
+
+(defcustom gneve-wav-dir (concat gneve-tmp-dir "/wav")
+  "*Cache directory of wave audio files. No trailing slash."
   :type 'directory
   :group 'gneve)
 
@@ -132,6 +142,9 @@
 (defconst gneve-default-buffer "*GNEVE*"
   "Default GNEVE buffer.")
 
+(defconst gneve-datacode-end ";;GNEVE datacode ends here"
+  "Emacs Lisp comment in EDL buffer: the end of file definition part and the start of timecode part.")
+
 (defvar gneve-buffer gneve-default-buffer
   "GNEVE working buffer.")
 (make-variable-buffer-local 'gneve-buffer)
@@ -151,6 +164,10 @@
 (defvar gneve-vslot-n 0
   "Video slot number.")
 (make-variable-buffer-local 'gneve-vslot-n)
+
+(defvar gneve-aslots nil
+  "Audio slot file names list.")
+(make-variable-buffer-local 'gneve-aslots)
 
 (defvar gneve-mark-lastin 0
   "Start of marked section.")
@@ -183,9 +200,6 @@
 
 (defvar gneve-timeline-step 0
   "Range of timeline.")
-
-(defvar gneve-thumb-dir (concat gneve-tmp-dir "/thumbs")
-  "Cache dir of thumbnails.  No trailing slash.")
 
 ;;;###autoload
 (defun gneve-mode ()
@@ -240,17 +254,37 @@ Render commands:
 
 (defun gneve-init ()
   "Initialize a GNEVE session."
-  ;; Set default
+  ;; Set defaults
   (setq gneve-buffer (buffer-name)
-        gneve-vslots nil)
+        gneve-vslots nil
+        gneve-aslots nil)
   ;; Temporary directory creating
   (if (not (file-exists-p gneve-tmp-dir))
       (make-directory gneve-tmp-dir t))
-  ;; Evaulate vslots definition
+  (if (not (file-exists-p gneve-thumb-dir))
+      (make-directory gneve-thumb-dir))
+  (if (not (file-exists-p gneve-wav-dir))
+      (make-directory gneve-wav-dir))
+  ;; Parsing EDL buffer content
   (save-excursion
     (goto-char (point-min))
-    (forward-sexp 1)
-    (setq gneve-vslots (eval-last-sexp nil))))
+    ;; If datacode end marker not found, insert one
+    (unless (search-forward gneve-datacode-end nil t)
+      ;; Compatibility layer for old fashioned EDLs
+      (re-search-forward gneve-vslot-regexp nil t)
+      (beginning-of-line 1)
+      (insert gneve-datacode-end "\n"))
+    (search-backward gneve-datacode-end nil t)
+    (save-restriction
+      (narrow-to-region (point-min) (point))
+      (goto-char (point-min))
+      ;; Evaluate vslots definition
+      (forward-list 1)
+      (setq gneve-vslots (eval-last-sexp nil))
+      ;; Evaluate aslots definition
+      (forward-list 1)
+      (when (and (not (eobp)) (not (looking-at gneve-datacode-end)))
+        (setq gneve-aslots (eval-last-sexp nil))))))
 
 (defun gneve-start ()
   "Create a new GNEVE session."
@@ -274,6 +308,20 @@ Render commands:
    ((equal vslot (car list)) (length (cdr list)))
    (t (gneve-vslot-pos vslot (cdr list)))))
 
+(defun gneve-insert-datacode ()
+  "Insert vslots and aslots definition blocks."
+  (save-excursion
+    (save-restriction
+      (search-forward gneve-datacode-end nil t)
+      (narrow-to-region (point-min) (search-backward gneve-datacode-end nil t))
+      (goto-char (point-min))
+      (kill-sexp 1)
+      (if gneve-vslots
+          (insert (format "'%S\n" gneve-vslots)))
+      (kill-sexp 1)
+      (if gneve-aslots
+          (insert (format "'%S\n" gneve-aslots))))))
+
 (defun gneve-open-film (filename render-buffer)
   "Open video file FILENAME in RENDER-BUFFER and create a vslot entry for it."
   (interactive
@@ -282,14 +330,12 @@ Render commands:
   (if (not (file-regular-p filename))
       (error "%s is not a video file" filename))
   ;; If video file is not already in a slot
-  (when (not (member (expand-file-name filename) gneve-vslots))    (add-to-list 'gneve-vslots (expand-file-name filename) t)
+  (when (not (member (expand-file-name filename) gneve-vslots))
+    (add-to-list 'gneve-vslots (expand-file-name filename) t)
     (switch-to-buffer render-buffer)
-    (goto-char (point-min))
-    (kill-sexp 1)
-    (eval-expression 'gneve-vslots t)
-    (insert "\n\n"))
+    (gneve-insert-datacode))
+  ;; Lookup video in vslots
   (setq gneve-vslot-n
-        ;; Lookup video in vslots
         (gneve-vslot-pos (expand-file-name filename) (reverse gneve-vslots))
         ;; Initialize markers
         gneve-mark-lastin 0
@@ -319,7 +365,7 @@ Render commands:
   ;; Make thumbnail cache directory for current previewing video
   (let ((thumbfiles) (thumbfile) (thumb-position)
         (thumb-process (concat "gneve-create-thumbs" gneve-buffer))
-        (thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n gneve-vslots)))))
+        (thumbdir (concat gneve-thumb-dir "/" (md5 (nth gneve-vslot-n gneve-vslots)))))
     (if (not (file-exists-p thumbdir))
         (make-directory thumbdir t))
     ;; Make thumbfiles if not exists
@@ -460,9 +506,9 @@ Render commands:
   (save-excursion
     (save-restriction
       (goto-char (point-min))
-      ;; Skipping vslots definition
-      (forward-sexp 1)
-      (narrow-to-region (+ (point) 2) (point-max))
+      (re-search-forward gneve-vslot-regexp nil t)
+      (beginning-of-line 1)
+      (narrow-to-region (point) (point-max))
       (gneve-render-video render-buffer)))
   (pop-to-buffer (concat "gneve-render-process-" render-buffer)))
 
@@ -541,6 +587,7 @@ Render commands:
       (unless (eolp)
         (looking-at ".+")
         (setq subtitle (match-string 0))
+        ;; TODO: handling @ orig audio fade , # video section fade , % flags audio and video section fade
         (switch-to-buffer srt)
         (insert (format "%d\n" subcounter))
         (setq timecode-string (number-to-string (/ lengthrendered 25)))
