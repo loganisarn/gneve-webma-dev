@@ -96,7 +96,7 @@
   :group 'gneve)
 
 (defcustom gneve-wav-dir (concat gneve-tmp-dir "/wav")
-  "*Cache directory of wave audio files. No trailing slash."
+  "*Cache directory of wave audio files.  No trailing slash."
   :type 'directory
   :group 'gneve)
 
@@ -501,7 +501,7 @@ Render commands:
   (process-send-string gneve-video-process (format "seek %s 2\npause\n" gneve-mark-lastout)))
 
 (defun gneve-render-buffer (render-buffer)
-  "Render whole buffer."
+  "Render whole RENDER-BUFFER."
   (interactive (list (buffer-name)))
   (save-excursion
     (save-restriction
@@ -513,7 +513,7 @@ Render commands:
   (pop-to-buffer (concat "gneve-render-process-" render-buffer)))
 
 (defun gneve-render-region (render-buffer)
-  "Render only active region."
+  "Render active region in RENDER-BUFFER."
   (interactive (list (buffer-name)))
   (save-excursion
     (save-restriction
@@ -543,7 +543,7 @@ Render commands:
     (start-process playback-process nil "mplayer" "-vo" "x11" "-sub" srt "-quiet" avi)))
 
 (defun gneve-render-video (render-buffer)
-  "Render EDL to Avidemux JS script."
+  "Render EDL in RENDER-BUFFER to Avidemux JS script."
   ;; Count segments and write header with this info and source file
   (let* ((subcounter 1) (lengthrendered 0) (old-point (point)) (counter 0)
          (srt (concat render-buffer ".srt"))
