@@ -30,10 +30,10 @@
 ;;; Commentary:
 
 ;; Use:
-;;     1. M-x gneve-start RET to invoke in gneve-mode
-;;        C-x C-w to save *GNEVE* buffer as videname.edl for latter usage
-;;     2. C-x C-f any .edl file to open it in gneve-mode
-;;     3. C-h m to visit gneve-mode help
+;;     1. M-x `gneve-start' RET to invoke in `gneve-mode'
+;;        C-x C-w to save *GNEVE* buffer as videoname.edl for latter usage
+;;     2. C-x C-f any .edl file to open it in `gneve-mode'
+;;     3. C-h m to visit `gneve-mode' help
 
 ;;; Install:
 
@@ -144,9 +144,9 @@
   "GNEVE video process buffer name.")
 (make-variable-buffer-local 'gneve-video-process-buffer)
 
-(defvar vslots nil
+(defvar gneve-vslots nil
   "Video slot file names list.")
-(make-variable-buffer-local 'vslots)
+(make-variable-buffer-local 'gneve-vslots)
 
 (defvar gneve-vslot-n 0
   "Video slot number.")
@@ -232,7 +232,7 @@ Render commands:
   (interactive)
   (kill-all-local-variables)
   (setq major-mode 'gneve-mode)
-  (setq mode-name "gneve")
+  (setq mode-name "GNEVE")
   (use-local-map gneve-mode-map)
   (add-hook 'after-save-hook 'gneve-write-file nil t)
   (gneve-init)
@@ -242,20 +242,15 @@ Render commands:
   "Initialize a GNEVE session."
   ;; Set default
   (setq gneve-buffer (buffer-name)
-        vslots nil)
+        gneve-vslots nil)
   ;; Temporary directory creating
   (if (not (file-exists-p gneve-tmp-dir))
       (make-directory gneve-tmp-dir t))
+  ;; Evaulate vslots definition
   (save-excursion
     (goto-char (point-min))
-    ;; If buffer contains valid vslots definition
-    (if (looking-at "(setq vslots")
-        ;; then evaluate it
-        (and
-         (eval-region 0 (search-forward "))" nil t))
-         (forward-char 2))
-      ;; else create base structure
-      (insert "(setq vslots '( ))\n\n"))))
+    (forward-sexp 1)
+    (setq gneve-vslots (eval-last-sexp nil))))
 
 (defun gneve-start ()
   "Create a new GNEVE session."
@@ -287,23 +282,21 @@ Render commands:
   (if (not (file-regular-p filename))
       (error "%s is not a video file" filename))
   ;; If video file is not already in a slot
-  (when (not (member (expand-file-name filename) vslots))
-    (add-to-list 'vslots (expand-file-name filename) t)
+  (when (not (member (expand-file-name filename) gneve-vslots))    (add-to-list 'gneve-vslots (expand-file-name filename) t)
     (switch-to-buffer render-buffer)
     (goto-char (point-min))
-    (search-forward "))")
-    (backward-char 2)
-    (insert (format "\n\"%s\"" (expand-file-name filename)))
-    (forward-char 2))
+    (kill-sexp 1)
+    (eval-expression 'gneve-vslots t)
+    (insert "\n\n"))
   (setq gneve-vslot-n
         ;; Lookup video in vslots
-        (gneve-vslot-pos (expand-file-name filename) (reverse vslots))
+        (gneve-vslot-pos (expand-file-name filename) (reverse gneve-vslots))
         ;; Initialize markers
         gneve-mark-lastin 0
         gneve-mark-lastout 0)
   ;; Start video process
   (let ((video-process (concat "gneve-video-process-" render-buffer)))
-    ;; Set process ID and process buffer  
+    ;; Set process ID and process buffer
     (setq gneve-video-process-buffer (generate-new-buffer-name video-process)
           ;; Function `start-process' automatically generates new process ID
           ;; when specified one exists
@@ -326,7 +319,7 @@ Render commands:
   ;; Make thumbnail cache directory for current previewing video
   (let ((thumbfiles) (thumbfile) (thumb-position)
         (thumb-process (concat "gneve-create-thumbs" gneve-buffer))
-        (thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n vslots)))))
+        (thumbdir (concat gneve-thumb-dir (md5 (nth gneve-vslot-n gneve-vslots)))))
     (if (not (file-exists-p thumbdir))
         (make-directory thumbdir t))
     ;; Make thumbfiles if not exists
@@ -336,7 +329,7 @@ Render commands:
             thumbfile (format "thumb-%g.png" thumb-position))
       (add-to-list 'thumbfiles thumbfile t)
       (if (not (file-exists-p (concat thumbdir "/" thumbfile)))
-          (start-process thumb-process nil "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth gneve-vslot-n vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "80x60" (concat thumbdir "/" thumbfile))))
+          (start-process thumb-process nil "ffmpeg" "-v" "0" "-y" "-ss" (number-to-string thumb-position) "-i" (nth gneve-vslot-n gneve-vslots) "-vcodec" "png" "-vframes" "1" "-an" "-f" "rawvideo" "-s" "80x60" (concat thumbdir "/" thumbfile))))
     (gneve-tc-human)
     (insert
      (format "\n%s:%s %.5f\n" gneve-vslot-n timecode-string
@@ -467,9 +460,11 @@ Render commands:
   (save-excursion
     (save-restriction
       (goto-char (point-min))
-      (narrow-to-region (+ (search-forward  "))") 2) (point-max))
+      ;; Skipping vslots definition
+      (forward-sexp 1)
+      (narrow-to-region (+ (point) 2) (point-max))
       (gneve-render-video render-buffer)))
-  (pop-to-buffer (concat "gneve-render-process-buffer-" render-buffer)))
+  (pop-to-buffer (concat "gneve-render-process-" render-buffer)))
 
 (defun gneve-render-region (render-buffer)
   "Render only active region."
@@ -478,7 +473,7 @@ Render commands:
     (save-restriction
       (narrow-to-region (region-beginning) (region-end))
       (gneve-render-video render-buffer)))
-  (pop-to-buffer (concat "gneve-render-process-buffer-" render-buffer)))
+  (pop-to-buffer (concat "gneve-render-process-" render-buffer)))
 
 (defun gneve-save-rendered (videoname render-buffer)
   "Save rendered video file as VIDEONAME."
@@ -512,12 +507,11 @@ Render commands:
          (js-path (concat gneve-tmp-dir "/" js))
          (avi-path (concat gneve-tmp-dir "/" avi))
          (render-process (concat "gneve-render-process-" render-buffer))
-         (render-process-buffer (concat "gneve-render-process-buffer-" render-buffer))
          startframe endframe subtitle vslot my-vslots)
     ;; `vslots' is buffer local variable, in future we should use the proper
     ;; mode prefix to avoid this "my-vslots" hack
     (set-buffer render-buffer)
-    (setq my-vslots vslots)
+    (setq my-vslots gneve-vslots)
     (goto-char (point-min))
     ;; Count timecode strings
     (while (re-search-forward "^[0-9]" nil t)
@@ -573,7 +567,7 @@ Render commands:
     (switch-to-buffer srt)
     (save-buffer srt-path)
     ;; Deal with Avidemux
-    (start-process render-process render-process-buffer "avidemux2_cli" "--run" js-path "--video-process" "--save" avi-path "--quit")
+    (start-process render-process render-process "avidemux2_cli" "--run" js-path "--video-process" "--save" avi-path "--quit")
     (kill-buffer js)
     (kill-buffer srt)
     (switch-to-buffer render-buffer)
