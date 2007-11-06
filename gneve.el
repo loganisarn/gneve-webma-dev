@@ -98,11 +98,17 @@
   :type 'directory
   :group 'gneve)
 
+(defcustom gneve-audio-sample "48000"
+  "*Default audio sample rate in Hertz."
+  :type 'integer
+  :group 'gneve)
+
 ;; Keyboard shortcuts definition
 (defvar gneve-mode-map
   (let ((gneve-mode-map (make-sparse-keymap)))
     ;; Video operation
     (define-key gneve-mode-map "V" 'gneve-open-film)
+    (define-key gneve-mode-map "B" 'gneve-open-audio)
     (define-key gneve-mode-map "L" 'gneve-pause)
     (define-key gneve-mode-map "J" 'gneve-prev-frame)
     (define-key gneve-mode-map "K" 'gneve-next-frame)
@@ -205,6 +211,7 @@
 
 Video commands:
   V - Visit video file and start playing
+  B - Visit background audio file and start caching
   G - Goto timecode of user input
   C - Goto timecode of current point
   L - Play/pause
@@ -218,7 +225,7 @@ Video commands:
   Layout summary:
   Q W
    A S     G   J K L
-        C V
+        C V B
 
 Editing commands:
   E - Mark start of a section
@@ -311,12 +318,12 @@ Render commands:
        (kill-buffer gneve-video-process-buffer))
   nil)
 
-(defun gneve-vslot-pos (vslot list)
-  "Get position of VSLOT in LIST."
+(defun gneve-slot-pos (slot list)
+  "Get position of SLOT in LIST."
   (cond
    ((null list) nil)
-   ((equal vslot (car list)) (length (cdr list)))
-   (t (gneve-vslot-pos vslot (cdr list)))))
+   ((equal slot (car list)) (length (cdr list)))
+   (t (gneve-slot-pos slot (cdr list)))))
 
 (defun gneve-insert-datacode ()
   "Insert vslots and aslots definition blocks."
@@ -326,11 +333,29 @@ Render commands:
       (narrow-to-region (point-min) (search-backward gneve-datacode-end nil t))
       (goto-char (point-min))
       (kill-sexp 1)
-      (if gneve-vslots
-          (insert (format "'%S\n" gneve-vslots)))
+      (insert (format "'%S\n" gneve-vslots))
       (kill-sexp 1)
-      (if gneve-aslots
-          (insert (format "'%S\n" gneve-aslots))))))
+      (insert (format "'%S\n" gneve-aslots)))))
+
+(defun gneve-open-audio (filename render-buffer)
+  "Open background audio FILENAME in RENDER-BUFFER and create an audio slot entry for it."
+  (interactive
+   (list (car (find-file-read-args "Find audio file: " t))
+         (buffer-name)))
+  (if (not (file-regular-p filename))
+      (error "%s is not an audio file" filename))
+  ;; If audio file is not already in a slot
+  (when (not (member (expand-file-name filename) gneve-aslots))
+    (add-to-list 'gneve-aslots (expand-file-name filename) t)
+    (switch-to-buffer render-buffer)
+    (gneve-insert-datacode))
+  ;; Start audio process
+  (let* ((audio-process (concat "gneve-audio-process-" render-buffer))
+         (audio-file (concat gneve-wav-dir "/" (md5 (expand-file-name filename))))
+         (audio-process-buffer (generate-new-buffer-name audio-process)))
+    (unless (file-exists-p audio-file)
+      (start-process audio-process audio-process-buffer "sox" (expand-file-name filename) "-r" gneve-audio-sample "-t" "wav" audio-file)))
+  (message "Audio file cached: %s" (expand-file-name filename)))
 
 (defun gneve-open-film (filename render-buffer)
   "Open video file FILENAME in RENDER-BUFFER and create a vslot entry for it."
@@ -346,7 +371,7 @@ Render commands:
     (gneve-insert-datacode))
   ;; Lookup video in vslots
   (setq gneve-vslot-n
-        (gneve-vslot-pos (expand-file-name filename) (reverse gneve-vslots))
+        (gneve-slot-pos (expand-file-name filename) (reverse gneve-vslots))
         ;; Initialize markers
         gneve-mark-lastin 0
         gneve-mark-lastout 0)
@@ -359,8 +384,9 @@ Render commands:
     (setq gneve-video-process-buffer (generate-new-buffer-name video-process)
           ;; Function `start-process' automatically generates new process ID
           ;; when specified one exists
-          gneve-video-process (start-process video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-vf" "scale" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))))
+          gneve-video-process (start-process video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))))
   (message (format "Now playing: %s" (expand-file-name filename))))
+
 
 (defun gneve-take-screenshot ()
   "Take screenshot of current frame."
