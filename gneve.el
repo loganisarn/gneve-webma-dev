@@ -76,6 +76,8 @@
 
 ;;; Code:
 
+(require 'font-lock)
+
 (defgroup gneve nil
   "*GNU Emacs Video Editor mode for editing video Edit Decision List or EDL."
   :link '(url-link "http://www.1010.co.uk/gneve.html")
@@ -148,6 +150,12 @@
 
 (defconst gneve-datacode-end ";;GNEVE datacode ends here"
   "Emacs Lisp comment in EDL buffer: the end of file definition part and the start of timecode part.")
+
+(defconst gneve-font-lock-keywords
+  (list
+   '("[: ]+\\([0-9]+\\.?[0-9]*\\)" (1 font-lock-function-name-face))
+   (cons "@\\|#\\|%" font-lock-constant-face))
+  "Basic syntax highlight rules.")
 
 (defvar gneve-buffer gneve-default-buffer
   "GNEVE working buffer.")
@@ -253,6 +261,7 @@ Render commands:
   (setq major-mode 'gneve-mode)
   (setq mode-name "GNEVE")
   (use-local-map gneve-mode-map)
+  (set (make-local-variable 'font-lock-defaults) '(gneve-font-lock-keywords))
   (add-hook 'after-save-hook 'gneve-write-file-hook nil t)
   (add-hook 'kill-buffer-hook 'gneve-kill-buffer-hook nil t)
   (gneve-init)
@@ -376,7 +385,8 @@ Render commands:
         gneve-mark-lastin 0
         gneve-mark-lastout 0)
   ;; Kill buffer related to a previously exited video process
-  (if (and gneve-video-process (not (processp gneve-video-process)))
+  (if (and gneve-video-process
+           (not (string= "run" (process-status gneve-video-process))))
       (kill-buffer gneve-video-process-buffer))
   ;; Start video process
   (let ((video-process (concat "gneve-video-process-" render-buffer)))
