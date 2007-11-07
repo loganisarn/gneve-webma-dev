@@ -77,6 +77,7 @@
 ;;; Code:
 
 (require 'font-lock)
+(require 'easymenu)
 
 (defgroup gneve nil
   "*GNU Emacs Video Editor mode for editing video Edit Decision List or EDL."
@@ -136,6 +137,23 @@
     (define-key gneve-mode-map "D" 'gneve-take-screenshot)
   gneve-mode-map)
   "Local keymap for GNEVE.")
+
+(defvar gneve-menu
+  (easy-menu-define
+    gneve-menu gneve-mode-map "GNEVE mode menu"
+    '("GNEVE"
+      ["Open film"           gneve-open-film]
+      ["Open audio"          gneve-open-audio]
+      "-"
+      ["Play/Pause"          gneve-pause]
+      ["Previous frame"      gneve-prev-frame]
+      ["Next frame"          gneve-next-frame]
+      "-"
+      ["Render region"       gneve-render-region]
+      ["Render buffer"       gneve-render-buffer]
+      ["Save rendered video" gneve-save-rendered]
+      ["Play rendered video" gneve-play-rendered]
+    )))
 
 (defconst gneve-number-regexp
   "-?\\([0-9]+\\.?\\|\\.\\)[0-9]*\\(e[0-9]+\\)?"
@@ -259,10 +277,13 @@ Render commands:
               U I O P"
   (interactive)
   (kill-all-local-variables)
-  (setq major-mode 'gneve-mode)
-  (setq mode-name "GNEVE")
+  (setq major-mode 'gneve-mode
+        mode-name "GNEVE"
+        font-lock-defaults '(gneve-font-lock-keywords))
   (use-local-map gneve-mode-map)
-  (set (make-local-variable 'font-lock-defaults) '(gneve-font-lock-keywords))
+  ;; Add the menu
+  (if gneve-menu
+      (easy-menu-add gneve-menu))
   (add-hook 'after-save-hook 'gneve-write-file-hook nil t)
   (add-hook 'kill-buffer-hook 'gneve-kill-buffer-hook nil t)
   (gneve-init)
