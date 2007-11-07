@@ -153,8 +153,9 @@
 
 (defconst gneve-font-lock-keywords
   (list
-   '("[: ]+\\([0-9]+\\.?[0-9]*\\)" (1 font-lock-function-name-face))
-   (cons "@\\|#\\|%" font-lock-constant-face))
+   '("^[0-9]+:\\([0-9]+\\.?[0-9]*\\) +\\([0-9]+\\.?[0-9]*\\)" (1 font-lock-function-name-face) (2 font-lock-function-name-face)) ; timecode
+   (cons "^;;.+" font-lock-comment-face) ; datacode-end
+   (cons "@\\|#\\|%" font-lock-constant-face)) ; special audio marks
   "Basic syntax highlight rules.")
 
 (defvar gneve-buffer gneve-default-buffer
