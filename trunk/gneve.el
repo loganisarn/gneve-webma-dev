@@ -135,7 +135,8 @@
     (define-key gneve-mode-map "O" 'gneve-save-rendered)
     (define-key gneve-mode-map "P" 'gneve-play-rendered)
     (define-key gneve-mode-map "D" 'gneve-take-screenshot)
-  gneve-mode-map)
+
+    gneve-mode-map)
   "Local keymap for GNEVE.")
 
 (defvar gneve-menu
@@ -145,11 +146,15 @@
       ["Open film"           gneve-open-film]
       ["Open audio"          gneve-open-audio]
       "-"
-      ["Play/Pause"          gneve-pause]
-      ["Previous frame"      gneve-prev-frame]
-      ["Next frame"          gneve-next-frame]
+      ["Play/Pause"          gneve-pause
+       :active (gneve-video-process-running-p)]
+      ["Previous frame"      gneve-prev-frame
+       :active (gneve-video-process-running-p)]
+      ["Next frame"          gneve-next-frame
+       :active (gneve-video-process-running-p)]
       "-"
-      ["Render region"       gneve-render-region]
+      ["Render region"       gneve-render-region
+       :active mark-active]
       ["Render buffer"       gneve-render-buffer]
       ["Save rendered video" gneve-save-rendered]
       ["Play rendered video" gneve-play-rendered]
@@ -340,14 +345,18 @@ Render commands:
 
 (defun gneve-kill-buffer-hook ()
   "Kill video process and related buffer started from current buffer."
-  (and gneve-video-process
-       (string= "run" (process-status gneve-video-process))
-       (or (yes-or-no-p "There is an active video process; exit anyway? ")
-           (error "Cancelled"))
-       (kill-process gneve-video-process))
-  (and gneve-video-process-buffer
-       (kill-buffer gneve-video-process-buffer))
+  (when (gneve-video-process-running-p)
+    (or (yes-or-no-p "There is an active video process; exit anyway? ")
+        (error "Cancelled"))
+    (kill-process gneve-video-process))
+  (if gneve-video-process-buffer
+      (kill-buffer gneve-video-process-buffer))
   nil)
+
+(defun gneve-video-process-running-p (&optional process)
+  "Return t if video PROCESS is running."
+  (let ((video-process (or process gneve-video-process)))
+    (and video-process (string= "run" (process-status video-process)))))
 
 (defun gneve-slot-pos (slot list)
   "Get position of SLOT in LIST."
@@ -418,7 +427,6 @@ Render commands:
           ;; when specified one exists
           gneve-video-process (start-process video-process gneve-video-process-buffer "mplayer" "-slave" "-vo" "x11" "-zoom" "-xy" "320" "-osdlevel" "1" "-quiet" (expand-file-name filename))))
   (message (format "Now playing: %s" (expand-file-name filename))))
-
 
 (defun gneve-take-screenshot ()
   "Take screenshot of current frame."
