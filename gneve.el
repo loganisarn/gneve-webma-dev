@@ -143,6 +143,8 @@
   (easy-menu-define
     gneve-menu gneve-mode-map "GNEVE mode menu"
     '("GNEVE"
+      ["Insert timeline"     gneve-insert-timeline
+       :active (gneve-video-process-running-p)]
       ["Open film"           gneve-open-film]
       ["Open audio"          gneve-open-audio]
       "-"
@@ -693,7 +695,7 @@ Render commands:
     (switch-to-buffer srt)
     (save-buffer srt-path)
     ;; Deal with Avidemux
-    (start-process render-process render-process "avidemux2_cli" "--run" js-path "--video-process" "--save" avi-path "--quit")
+    (start-process render-process render-process "avidemux2_cli" "--run" js-path "--force-smart" "--save" avi-path "--quit")
     (kill-buffer js)
     (kill-buffer srt)
     (switch-to-buffer render-buffer)
