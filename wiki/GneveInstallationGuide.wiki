@@ -1,6 +1,8 @@
 #summary How to install gneve.el?
 #labels Featured,Phase-Deploy,Phase-Design
 
+This is outdated. Please check GNEVE CVS at Savannah for updated version.
+
 = Introduction =
 
 GNU Emacs Video Editor mode (GNEVE) is an elisp application based on a patched mplayer and avidemux. Mplayer previews source videos that can be controlled using keyboard commands. Avidemux renders Edit Decision List using GNU Emacs video editor mode.
