@@ -1,7 +1,32 @@
 #summary How to install gneve.el?
 #labels Featured,Phase-Deploy,Phase-Design
 
-This is outdated. Please check GNEVE CVS at Savannah for updated version.
+This page is outdated. Please check GNEVE CVS at Savannah for updated version.
+
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+/
+
+
 
 = Introduction =
 
